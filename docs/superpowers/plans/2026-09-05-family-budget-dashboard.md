@@ -2300,8 +2300,13 @@ describe('markLogged', () => {
 
     await markLogged('Rent', new Date('2026-10-01'), new Date('2026-09-05'));
 
+    // "Rent" is the row right after the header, i.e. sheet row 2 — assert the
+    // row/column portion of the range (not the tab name, which depends on
+    // Task 3's real discovery) so an off-by-one in row math fails this test
+    // directly instead of silently writing to the wrong row.
     expect(updateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
+        range: expect.stringContaining('C2:G2'),
         requestBody: { values: [['2026-10-01', '2026-09-05']] },
       })
     );
@@ -2332,11 +2337,14 @@ export async function markLogged(name: string, newNextDueDate: Date, loggedOn: D
   const nextDueCol = header.indexOf('NextDueDate');
   const lastLoggedCol = header.indexOf('LastLoggedDate');
   const colLetter = (i: number) => String.fromCharCode(65 + i);
-  const sheetRow = rowIndex + 1; // rowIndex is 0-based within `rows`, which itself starts at sheet row 1
+  // rowIndex is 0-based within `rows`, and `rows` itself starts at sheet row 1
+  // (rows[0] is the header row), so the 1-based sheet row is rowIndex + 1 —
+  // do not add a second +1 when building the range below.
+  const sheetRow = rowIndex + 1;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${tab}'!${colLetter(nextDueCol)}${sheetRow + 1}:${colLetter(lastLoggedCol)}${sheetRow + 1}`,
+    range: `'${tab}'!${colLetter(nextDueCol)}${sheetRow}:${colLetter(lastLoggedCol)}${sheetRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [[newNextDueDate.toISOString().slice(0, 10), loggedOn.toISOString().slice(0, 10)]] },
   });
