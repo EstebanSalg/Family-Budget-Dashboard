@@ -27,20 +27,56 @@ These require actions in the Google Cloud Console that no tool available to the
 implementer can perform — a human must do them once, before any task that talks to
 the live Sheets API can be run or verified.
 
-1. In Google Cloud Console, create (or reuse) a project, enable the **Google Sheets
-   API**, and create a **Service Account**. Generate a JSON key for it.
-2. Share the dev copy spreadsheet
-   (`https://docs.google.com/spreadsheets/d/1VG3OvZqQA0yzFIsG11KVbHsLqkWeQpg9cl1wsFwTu6M/edit`)
-   with the service account's email address, with **Editor** access.
-3. Create `.env.local` in the project root (never commit this file) with:
+**Auth approach: OAuth Client + refresh token, not a service account key.** A
+service account JSON key was the original plan, but Google's "Secure by Default"
+organization policy (`iam.managed.disableServiceAccountKeyCreation`) blocks key
+creation on this account's project and could not be overridden. OAuth Client
+credentials are a different credential type that this policy does not restrict, and
+as a bonus the sheet does not need to be separately shared with a service-account
+email — the app authenticates as the account that already owns it.
+
+1. In Google Cloud Console, create (or reuse) a project and enable the **Google
+   Sheets API** (APIs & Services → Library → search "Google Sheets API" → Enable).
+2. **Configure the OAuth consent screen** (APIs & Services → OAuth consent screen):
+   User type **External**; fill in app name (e.g. "Budget Dashboard"), user support
+   email, and developer contact email (your own email is fine for all three); add
+   the scope `https://www.googleapis.com/auth/spreadsheets`; add your own Google
+   account under "Test users". Then click **Publish App** to move it out of
+   "Testing" status — apps left in Testing status get refresh tokens that expire
+   after 7 days, which would silently break the daily recurring-expense cron
+   (Task 14). Publishing without going through Google's full verification is fine
+   for personal use with a handful of users; anyone signing in just sees an
+   "unverified app" warning they click through, which is expected here since it's
+   your own app for your own use.
+3. **Create an OAuth Client ID** (APIs & Services → Credentials → Create
+   Credentials → OAuth client ID): Application type **Web application**; under
+   "Authorized redirect URIs" add `https://developers.google.com/oauthplayground`.
+   Note the **Client ID** and **Client Secret** it gives you.
+4. **Get a refresh token via Google's OAuth Playground**
+   (https://developers.google.com/oauthplayground/):
+   - Click the gear icon (top right) → check "Use your own OAuth credentials" →
+     paste in the Client ID and Client Secret from step 3.
+   - In the left panel, find "Google Sheets API v4" and select the
+     `https://www.googleapis.com/auth/spreadsheets` scope (or paste that URL
+     directly into the scope input) → **Authorize APIs**.
+   - Sign in with the Google account that owns the dev copy sheet and consent
+     (click through the "unverified app" warning — this is your own app).
+   - Click **Exchange authorization code for tokens** → copy the **Refresh token**
+     shown.
+5. Create `.env.local` in the project root (never commit this file) with:
    ```
-   GOOGLE_SERVICE_ACCOUNT_EMAIL=<from the JSON key's "client_email">
-   GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="<from the JSON key's "private_key", keep the \n escapes literal>"
+   GOOGLE_OAUTH_CLIENT_ID=<Client ID from step 3>
+   GOOGLE_OAUTH_CLIENT_SECRET=<Client Secret from step 3>
+   GOOGLE_OAUTH_REFRESH_TOKEN=<Refresh token from step 4>
    GOOGLE_SPREADSHEET_ID=1VG3OvZqQA0yzFIsG11KVbHsLqkWeQpg9cl1wsFwTu6M
    SESSION_SECRET=<any long random string>
    DASHBOARD_PASSWORD=<the shared household password, plain text is fine for .env.local>
    ```
-4. Add `.env.local` to `.gitignore` (Task 1 does this).
+6. Add `.env.local` to `.gitignore` (Task 1 does this).
+
+Since the app now authenticates as your own Google account rather than a separate
+service account, there is no separate "share the sheet with this email" step — you
+already have access to both the dev copy and (later) the original sheet.
 
 If any task from Task 3 onward cannot find these env vars, stop and ask the user to
 complete this section rather than guessing or hardcoding credentials.
@@ -160,21 +196,26 @@ export function getSpreadsheetId(): string {
 export async function getSheetsClient(): Promise<sheets_v4.Sheets> {
   if (cachedClient) return cachedClient;
 
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-  if (!email) throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is not set');
-  if (!privateKey) throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is not set');
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (!clientId) throw new Error('GOOGLE_OAUTH_CLIENT_ID is not set');
+  if (!clientSecret) throw new Error('GOOGLE_OAUTH_CLIENT_SECRET is not set');
+  if (!refreshToken) throw new Error('GOOGLE_OAUTH_REFRESH_TOKEN is not set');
 
-  const auth = new google.auth.JWT({
-    email,
-    key: privateKey.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  const auth = new google.auth.OAuth2(clientId, clientSecret);
+  auth.setCredentials({ refresh_token: refreshToken });
 
   cachedClient = google.sheets({ version: 'v4', auth });
   return cachedClient;
 }
 ```
+
+Auth note: this uses an OAuth Client + refresh token (see Setup Prerequisites)
+rather than a service account, because Google's Secure-by-Default org policy
+blocks service-account key creation on this account's project. `google.auth.OAuth2`
+automatically uses the refresh token to mint fresh access tokens as needed — no
+manual token-refresh logic required here.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -2769,8 +2810,9 @@ git commit -m "feat: add Annual Summary page and shared navigation"
 - [ ] **Step 1: Write `.env.example`**
 
 ```
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REFRESH_TOKEN=
 GOOGLE_SPREADSHEET_ID=
 SESSION_SECRET=
 DASHBOARD_PASSWORD=
@@ -2780,7 +2822,8 @@ CRON_SECRET=
 - [ ] **Step 2: Write `README.md`**
 
 Include: what this project is, the env vars from `.env.example` and where each
-comes from (service account JSON, shared household password), how to run locally
+comes from (OAuth Client ID/Secret + refresh token via the OAuth Playground, as
+documented in the plan's Setup Prerequisites; shared household password), how to run locally
 (`npm install`, `npm run dev`), how to run the discovery script, how to run tests
 (`npm test`), and Vercel deployment steps (connect the GitHub repo, add the same env
 vars in the Vercel project settings, confirm the cron job in `vercel.json` is
