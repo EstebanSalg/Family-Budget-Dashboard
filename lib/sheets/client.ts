@@ -11,16 +11,15 @@ export function getSpreadsheetId(): string {
 export async function getSheetsClient(): Promise<sheets_v4.Sheets> {
   if (cachedClient) return cachedClient;
 
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-  if (!email) throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is not set');
-  if (!privateKey) throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is not set');
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (!clientId) throw new Error('GOOGLE_OAUTH_CLIENT_ID is not set');
+  if (!clientSecret) throw new Error('GOOGLE_OAUTH_CLIENT_SECRET is not set');
+  if (!refreshToken) throw new Error('GOOGLE_OAUTH_REFRESH_TOKEN is not set');
 
-  const auth = new google.auth.JWT({
-    email,
-    key: privateKey.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  const auth = new google.auth.OAuth2(clientId, clientSecret);
+  auth.setCredentials({ refresh_token: refreshToken });
 
   cachedClient = google.sheets({ version: 'v4', auth });
   return cachedClient;
