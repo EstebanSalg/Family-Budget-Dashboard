@@ -1,5 +1,5 @@
 import { getSheetsClient, getSpreadsheetId } from './client';
-import { BUDGET_RANGE } from './layout';
+import { ANNUAL_SUMMARY_RANGE, BUDGET_RANGE } from './layout';
 import { parseCurrency } from './parse';
 
 export type CategoryBudget = {
@@ -54,5 +54,27 @@ export async function updateCategoryBudget(category: string, newBudget: number):
     range: `'${tabName}'!B${sheetRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [[newBudget]] },
+  });
+}
+
+export async function addCategory(input: { emoji: string; name: string; startingBudget: number }): Promise<void> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+  const categoryLabel = `${input.emoji} ${input.name}`;
+  const budgetTab = BUDGET_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+  const annualTab = ANNUAL_SUMMARY_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${budgetTab}'!A:F`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[categoryLabel, input.startingBudget, 0, input.startingBudget, 0, '⬜ N/A']] },
+  });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${annualTab}'!A:N`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[categoryLabel, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']] },
   });
 }

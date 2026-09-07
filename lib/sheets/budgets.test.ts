@@ -76,3 +76,23 @@ describe('updateCategoryBudget', () => {
     );
   });
 });
+
+describe('addCategory', () => {
+  it('appends a row to the budget tab and the annual summary tab', async () => {
+    const appendSpy = vi.fn(async (_params: any) => ({ data: {} }));
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: { values: { append: appendSpy } },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { addCategory } = await import('./budgets');
+
+    await addCategory({ emoji: '🎮', name: 'Gaming', startingBudget: 50 });
+
+    expect(appendSpy).toHaveBeenCalledTimes(2);
+    expect(appendSpy.mock.calls[0][0].requestBody.values).toEqual([['🎮 Gaming', 50, 0, 50, 0, '⬜ N/A']]);
+    expect(appendSpy.mock.calls[1][0].requestBody.values[0][0]).toBe('🎮 Gaming');
+  });
+});
