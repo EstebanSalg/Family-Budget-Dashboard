@@ -82,6 +82,11 @@ email — the app authenticates as the account that already owns it.
    SESSION_SECRET=<any long random string>
    DASHBOARD_PASSWORD=<the shared household password, plain text is fine for .env.local>
    ```
+   **If the password contains a literal `$`, escape it as `\$`.** Next.js's env-file
+   loading treats a bare `$` as the start of variable interpolation (e.g. `$NAME` or
+   `${NAME}`) and will silently mangle the value otherwise — a real issue hit during
+   Task 6, where `Isabella$260612**` did not work as typed until escaped to
+   `Isabella\$260612**`.
 6. Add `.env.local` to `.gitignore` (Task 1 does this).
 
 Since the app now authenticates as your own Google account rather than a separate
@@ -558,7 +563,14 @@ git commit -m "feat: add Expense Log repository"
 - Test: `lib/auth/session.test.ts`
 
 **Interfaces:**
-- Produces: `signSession(): string`, `verifySession(token: string | undefined): boolean` — used by `middleware.ts` and `app/api/login/route.ts`.
+- Produces: `signSession(): Promise<string>`, `verifySession(token: string | undefined): Promise<boolean>` — used by `middleware.ts` and `app/api/login/route.ts`.
+
+**Runtime note:** `middleware.ts` executes on Next.js's **Edge Runtime**, which does not
+provide Node's `crypto` module (`node:crypto`) at all — `crypto.createHmac` and
+`crypto.timingSafeEqual` are unavailable there and importing them breaks every route
+the middleware covers. Use the standard **Web Crypto API** (`crypto.subtle`, global
+in both the Edge Runtime and modern Node.js — no import needed) instead, which makes
+`signSession`/`verifySession` async.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -573,19 +585,19 @@ beforeEach(() => {
 describe('session signing', () => {
   it('a freshly signed session verifies as valid', async () => {
     const { signSession, verifySession } = await import('./session');
-    const token = signSession();
-    expect(verifySession(token)).toBe(true);
+    const token = await signSession();
+    expect(await verifySession(token)).toBe(true);
   });
 
   it('a tampered token fails verification', async () => {
     const { signSession, verifySession } = await import('./session');
-    const token = signSession();
-    expect(verifySession(token + 'x')).toBe(false);
+    const token = await signSession();
+    expect(await verifySession(token + 'x')).toBe(false);
   });
 
   it('undefined fails verification', async () => {
     const { verifySession } = await import('./session');
-    expect(verifySession(undefined)).toBe(false);
+    expect(await verifySession(undefined)).toBe(false);
   });
 });
 ```
@@ -599,7 +611,9 @@ Expected: FAIL — `./session` does not exist.
 
 ```typescript
 // lib/auth/session.ts
-import crypto from 'node:crypto';
+// Uses the Web Crypto API (global `crypto.subtle`), not `node:crypto` — this file
+// is imported by middleware.ts, which runs on the Edge Runtime and has no access
+// to Node's crypto module. Web Crypto works in both the Edge Runtime and Node.js.
 
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -607,19 +621,42 @@ function getSecret(): string {
   return secret;
 }
 
-export function signSession(): string {
-  const payload = 'family-budget-dashboard';
-  const hmac = crypto.createHmac('sha256', getSecret()).update(payload).digest('hex');
-  return `${payload}.${hmac}`;
+async function getHmacKey(): Promise<CryptoKey> {
+  const keyData = new TextEncoder().encode(getSecret());
+  return crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
 }
 
-export function verifySession(token: string | undefined): boolean {
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function signSession(): Promise<string> {
+  const payload = 'family-budget-dashboard';
+  const key = await getHmacKey();
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return `${payload}.${toHex(signature)}`;
+}
+
+export async function verifySession(token: string | undefined): Promise<boolean> {
   if (!token) return false;
   const [payload, hmac] = token.split('.');
   if (!payload || !hmac) return false;
-  const expected = crypto.createHmac('sha256', getSecret()).update(payload).digest('hex');
-  if (expected.length !== hmac.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hmac));
+
+  const key = await getHmacKey();
+  const expectedSignature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  const expectedHex = toHex(expectedSignature);
+  if (expectedHex.length !== hmac.length) return false;
+
+  // Constant-time compare: Web Crypto has no built-in timingSafeEqual, so
+  // accumulate an XOR difference over every character instead of short-
+  // circuiting on the first mismatch (which would leak timing information).
+  let diff = 0;
+  for (let i = 0; i < expectedHex.length; i++) {
+    diff |= expectedHex.charCodeAt(i) ^ hmac.charCodeAt(i);
+  }
+  return diff === 0;
 }
 ```
 
@@ -641,7 +678,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true });
-  res.cookies.set('session', signSession(), {
+  res.cookies.set('session', await signSession(), {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -657,13 +694,13 @@ export async function POST(req: NextRequest) {
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session';
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (pathname.startsWith('/login') || pathname.startsWith('/api/login')) {
     return NextResponse.next();
   }
   const token = req.cookies.get('session')?.value;
-  if (!verifySession(token)) {
+  if (!(await verifySession(token))) {
     const loginUrl = new URL('/login', req.url);
     return NextResponse.redirect(loginUrl);
   }
