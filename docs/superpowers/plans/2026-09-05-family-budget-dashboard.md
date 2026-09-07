@@ -1989,6 +1989,41 @@ describe('ensureRecurringColumns', () => {
     ]);
   });
 });
+
+describe('getRecurringItems', () => {
+  it('reads name from the Item column, not column A (which is Category)', async () => {
+    // Real schema discovered in Task 3: column A is "Category" (e.g. an emoji
+    // label), and the item's actual name lives in "Item" (e.g. "Netflix") —
+    // NOT column A. This test guards against re-introducing a bug where
+    // `name` was read from row[0] and ended up identical to `category`.
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: {
+          values: {
+            get: vi.fn(async () => ({
+              data: {
+                values: [
+                  ['Category', 'Item', 'ExpectedAmount', 'Keyword', 'Type', 'Notes', 'NextDueDate', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'],
+                  ['🎬 Entertainment', 'Netflix', '$15.99', 'netflix', 'fixed', '', '2026-09-15', 'Monthly', 'TRUE', ''],
+                ],
+              },
+            })),
+          },
+        },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { getRecurringItems } = await import('./recurring');
+
+    const items = await getRecurringItems();
+
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe('Netflix');
+    expect(items[0].category).toBe('🎬 Entertainment');
+    expect(items[0].name).not.toBe(items[0].category);
+  });
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2001,7 +2036,7 @@ Expected: FAIL — `./recurring` does not exist.
 ```typescript
 // lib/sheets/recurring.ts
 import { getSheetsClient, getSpreadsheetId } from './client';
-import { RECURRING_RANGE } from './layout';
+import { RECURRING_RANGE, RECURRING_HEADER_ROW } from './layout';
 import { parseCurrency, parseSheetDate } from './parse';
 
 export type Frequency = 'Weekly' | 'Biweekly' | 'Monthly' | 'Annually';
@@ -2027,7 +2062,7 @@ export async function ensureRecurringColumns(): Promise<void> {
   const spreadsheetId = getSpreadsheetId();
   const tab = tabName();
 
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A1:Z1` });
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A${RECURRING_HEADER_ROW}:Z${RECURRING_HEADER_ROW}` });
   const existingHeaders = (res.data.values?.[0] ?? []).map(String);
 
   const missing = REQUIRED_NEW_COLUMNS.filter((col) => !existingHeaders.includes(col));
@@ -2036,7 +2071,7 @@ export async function ensureRecurringColumns(): Promise<void> {
   const newHeaders = [...existingHeaders, ...missing];
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${tab}'!A1`,
+    range: `'${tab}'!A${RECURRING_HEADER_ROW}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [newHeaders] },
   });
@@ -2072,7 +2107,7 @@ export async function getRecurringItems(): Promise<RecurringItem[]> {
   const idx = (col: string) => header.indexOf(col);
 
   return dataRows.map((row) => ({
-    name: String(row[0] ?? ''),
+    name: String(row[idx('Item')] ?? ''),
     category: String(row[idx('Category')] ?? ''),
     expectedAmount: parseCurrency(String(row[idx('ExpectedAmount')] ?? '')),
     frequency: (row[idx('Frequency')] as Frequency) ?? 'Monthly',
@@ -2094,11 +2129,11 @@ export async function addRecurringItem(input: {
   const spreadsheetId = getSpreadsheetId();
   const tab = tabName();
 
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A1:Z1` });
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A${RECURRING_HEADER_ROW}:Z${RECURRING_HEADER_ROW}` });
   const header = (res.data.values?.[0] ?? []).map(String);
   const row = header.map((col) => {
     switch (col) {
-      case 'Name': return input.name;
+      case 'Item': return input.name;
       case 'Category': return input.category;
       case 'ExpectedAmount': return input.expectedAmount;
       case 'Frequency': return input.frequency;
@@ -2336,8 +2371,8 @@ describe('markLogged', () => {
           values: {
             get: vi.fn(async () => ({
               data: { values: [
-                ['Name', 'Category', 'NextDueDate', 'ExpectedAmount', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'],
-                ['Rent', '🏠 Housing', '2026-09-01', '2650', 'Monthly', 'TRUE', ''],
+                ['Category', 'Item', 'NextDueDate', 'ExpectedAmount', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'],
+                ['🏠 Housing', 'Rent', '2026-09-01', '2650', 'Monthly', 'TRUE', ''],
               ] },
             })),
             update: updateSpy,
@@ -2351,13 +2386,15 @@ describe('markLogged', () => {
 
     await markLogged('Rent', new Date('2026-10-01'), new Date('2026-09-05'));
 
-    // "Rent" is the row right after the header, i.e. sheet row 2 — assert the
-    // row/column portion of the range (not the tab name, which depends on
-    // Task 3's real discovery) so an off-by-one in row math fails this test
-    // directly instead of silently writing to the wrong row.
+    // Real schema (Task 3 discovery): column A is "Category", not "Name" — the
+    // item's identifying name is in the "Item" column, and the real header row
+    // is RECURRING_HEADER_ROW (2, from lib/sheets/layout.ts), not row 1. "Rent"
+    // is the data row right after the header, i.e. sheet row 3. Assert the
+    // row/column portion of the range so an off-by-one in row math fails this
+    // test directly instead of silently writing to the wrong row.
     expect(updateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        range: expect.stringContaining('C2:G2'),
+        range: expect.stringContaining('C3:G3'),
         requestBody: { values: [['2026-10-01', '2026-09-05']] },
       })
     );
@@ -2379,19 +2416,19 @@ export async function markLogged(name: string, newNextDueDate: Date, loggedOn: D
   const spreadsheetId = getSpreadsheetId();
   const tab = tabName();
 
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A1:Z1000` });
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A${RECURRING_HEADER_ROW}:Z1000` });
   const rows = res.data.values ?? [];
   const header = rows[0] ?? [];
-  const rowIndex = rows.findIndex((row) => row[0] === name);
+  const nameCol = header.indexOf('Item');
+  const rowIndex = rows.findIndex((row) => row[nameCol] === name);
   if (rowIndex === -1) throw new Error(`Recurring item not found: ${name}`);
 
   const nextDueCol = header.indexOf('NextDueDate');
   const lastLoggedCol = header.indexOf('LastLoggedDate');
   const colLetter = (i: number) => String.fromCharCode(65 + i);
-  // rowIndex is 0-based within `rows`, and `rows` itself starts at sheet row 1
-  // (rows[0] is the header row), so the 1-based sheet row is rowIndex + 1 —
-  // do not add a second +1 when building the range below.
-  const sheetRow = rowIndex + 1;
+  // rows[0] (the header) sits at sheet row RECURRING_HEADER_ROW, so the
+  // 1-based sheet row for rows[rowIndex] is RECURRING_HEADER_ROW + rowIndex.
+  const sheetRow = RECURRING_HEADER_ROW + rowIndex;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
