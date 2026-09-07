@@ -35,3 +35,21 @@ export async function getTransactions(): Promise<Transaction[]> {
       year: Number(row[6]),
     }));
 }
+
+export async function appendTransaction(t: {
+  date: Date; amount: number; category: string; description: string; source: string;
+}): Promise<void> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+  const tab = EXPENSE_LOG_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+  const dateStr = t.date.toISOString().slice(0, 10);
+  const month = t.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  const year = t.date.getUTCFullYear();
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${tab}'!A:G`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[dateStr, t.amount, t.category, t.description, t.source, month, year]] },
+  });
+}
