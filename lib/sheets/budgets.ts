@@ -32,3 +32,27 @@ export async function getCategoryBudgets(): Promise<CategoryBudget[]> {
     return { category: String(row[0]), budget, spent, remaining, percentUsed };
   });
 }
+
+export async function updateCategoryBudget(category: string, newBudget: number): Promise<void> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: BUDGET_RANGE });
+  const rows = res.data.values ?? [];
+  const rowIndex = rows.findIndex((row) => row[0] === category);
+  if (rowIndex === -1) throw new Error(`Category not found: ${category}`);
+
+  // BUDGET_RANGE starts at row 1 (header); data row N is at sheet row N+1,
+  // and the range itself may start partway down the sheet — derive the sheet
+  // row number from the range's own starting row, not a hardcoded offset.
+  const rangeStartRow = Number(BUDGET_RANGE.match(/(\d+)(?=:)/)?.[1] ?? '1');
+  const sheetRow = rangeStartRow + rowIndex;
+  const tabName = BUDGET_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${tabName}'!B${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[newBudget]] },
+  });
+}

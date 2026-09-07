@@ -34,3 +34,45 @@ describe('getCategoryBudgets', () => {
     });
   });
 });
+
+describe('updateCategoryBudget', () => {
+  it('writes the new budget to the row matching the category', async () => {
+    const updateSpy = vi.fn(async () => ({ data: {} }));
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: {
+          values: {
+            get: vi.fn(async () => ({
+              data: {
+                values: [
+                  ['Category', 'Budget ($)', 'Spent ($)', 'Remaining ($)', '% Used', 'Status'],
+                  ['🛒 Groceries', '1,100.00', '1,659.71', '-559.71', '150.88%', '🔴 Over'],
+                ],
+              },
+            })),
+            update: updateSpy,
+          },
+        },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { updateCategoryBudget } = await import('./budgets');
+
+    await updateCategoryBudget('🛒 Groceries', 1200);
+
+    // NOTE: BUDGET_RANGE (from lib/sheets/layout.ts, Task 3's real sheet
+    // discovery) is "'Monthly Budget'!A3:F1001" — its header row is sheet
+    // row 3, so with the header at fetched index 0 and Groceries at fetched
+    // index 1, the correct real sheet row is 3 + 1 = 4 (matches layout.ts's
+    // own comment: "Category rows run 4-19"). Asserting B4 here reflects
+    // the actual, already-committed BUDGET_RANGE rather than a stale
+    // assumption that it starts at row 1.
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        range: expect.stringContaining('B4'),
+        requestBody: { values: [[1200]] },
+      })
+    );
+  });
+});
