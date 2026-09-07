@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session';
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (pathname.startsWith('/login') || pathname.startsWith('/api/login')) {
     return NextResponse.next();
   }
   const token = req.cookies.get('session')?.value;
-  if (!verifySession(token)) {
+  if (!(await verifySession(token))) {
     const loginUrl = new URL('/login', req.url);
     return NextResponse.redirect(loginUrl);
   }

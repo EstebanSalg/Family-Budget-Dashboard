@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true });
-  res.cookies.set('session', signSession(), {
+  res.cookies.set('session', await signSession(), {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

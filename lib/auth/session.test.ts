@@ -7,18 +7,18 @@ beforeEach(() => {
 describe('session signing', () => {
   it('a freshly signed session verifies as valid', async () => {
     const { signSession, verifySession } = await import('./session');
-    const token = signSession();
-    expect(verifySession(token)).toBe(true);
+    const token = await signSession();
+    expect(await verifySession(token)).toBe(true);
   });
 
   it('a tampered token fails verification', async () => {
     const { signSession, verifySession } = await import('./session');
-    const token = signSession();
-    expect(verifySession(token + 'x')).toBe(false);
+    const token = await signSession();
+    expect(await verifySession(token + 'x')).toBe(false);
   });
 
   it('undefined fails verification', async () => {
     const { verifySession } = await import('./session');
-    expect(verifySession(undefined)).toBe(false);
+    expect(await verifySession(undefined)).toBe(false);
   });
 });
