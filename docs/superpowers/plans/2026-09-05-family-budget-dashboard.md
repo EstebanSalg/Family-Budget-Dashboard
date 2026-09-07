@@ -1462,6 +1462,29 @@ git commit -m "feat: add category detail page with 6-month trend and search"
 
 ### Task 10: Add Category Flow
 
+**⚠️ Design correction (post-discovery):** the original version of this task appended a
+new category as static values (`Spent=0` etc.) after the last populated row via
+`values.append` on an open-ended range. Live investigation against the real dev
+sheet confirmed this is a real bug, already independently manifesting there: every
+existing category's `Spent`/`Remaining`/`% Used`/`Status` cells are **live formulas**
+(a `SUMPRODUCT` against the Expense Log, `=B{row}-C{row}`, `=IF(B{row}=0,0,C{row}/B{row})`,
+and a nested status `IF`) — not static values — and each tab's `TOTAL` row is a
+`SUM()` over a **fixed literal row range** that does not auto-extend. A category
+appended below (or even just adjacent to, if inserted incorrectly) that fixed range
+is silently excluded from `TOTAL` forever, and a category whose own cells are
+static values never updates as real spending is logged against it. (The real sheet
+already has exactly this bug with one hand-added category — unrelated to this
+project's code, flagged separately to the user.)
+
+**Corrected approach:** `addCategory` must insert a new row via
+`spreadsheets.batchUpdate`'s `insertDimension` request immediately **above** each
+tab's `TOTAL` row (shifting `TOTAL` down, keeping the category block contiguous),
+populate `Spent`/`Remaining`/`%Used`/`Status` with **formulas derived from an
+existing sibling row** rather than static values, and **rewrite `TOTAL`'s `SUM()`
+range** to include the new row explicitly (Google Sheets does not reliably
+auto-extend a fixed-range `SUM()` across an inserted row boundary — confirmed by
+the same live investigation).
+
 **Files:**
 - Modify: `lib/sheets/budgets.ts` (add `addCategory`)
 - Create: `app/api/categories/route.ts`, `app/components/AddCategoryForm.tsx`
@@ -1472,71 +1495,83 @@ git commit -m "feat: add category detail page with 6-month trend and search"
 - Consumes: `BUDGET_RANGE`, `ANNUAL_SUMMARY_RANGE` (Task 3).
 - Produces: `addCategory(input: { emoji: string; name: string; startingBudget: number }): Promise<void>`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Confirm the exact live formula shapes before writing any code**
 
-```typescript
-// append to lib/sheets/budgets.test.ts
-describe('addCategory', () => {
-  it('appends a row to the budget tab and the annual summary tab', async () => {
-    const appendSpy = vi.fn(async () => ({ data: {} }));
-    vi.doMock('./client', () => ({
-      getSheetsClient: vi.fn(async () => ({
-        spreadsheets: { values: { append: appendSpy } },
-      })),
-      getSpreadsheetId: vi.fn(() => 'test-id'),
-    }));
-    vi.resetModules();
-    const { addCategory } = await import('./budgets');
+Re-verify against the dev sheet (a prior investigation already found these for the
+Monthly Budget tab — confirm they still hold, and discover the equivalent for
+Annual Summary, which was not fully captured):
 
-    await addCategory({ emoji: '🎮', name: 'Gaming', startingBudget: 50 });
+- Monthly Budget, for an existing category row R: `Spent` (col C) is
+  `=SUMPRODUCT(('Expense Log'!C2:C10029="<category>")*('Expense Log'!F2:F10029=C2)*('Expense Log'!B2:B10029))`
+  — note the `C2` inside this formula is an **absolute reference to the `Monthly
+  Budget!C2` month-selector cell**, not relative to row R, so this formula is
+  identical for every category row except for the category-name literal.
+  `Remaining` (col D) is `=B{R}-C{R}`. `%Used` (col E) is `=IF(B{R}=0,0,C{R}/B{R})`.
+  `Status` (col F) is `=IF(E{R}>1,"🔴 Over",IF(E{R}>0.85,"🟡 Near",IF(E{R}>0,"🟢 OK","⬜ N/A")))`.
+  `TOTAL` row is `B{total}=SUM(B4:B{total-1})` (and similarly for columns C and D;
+  E is `=IF(B{total}=0,0,C{total}/B{total})`; F is blank).
+- Annual Summary: fetch an existing category row's formulas with
+  `valueRenderOption: 'FORMULA'` to get the exact per-month `SUMPRODUCT` shape
+  (expected to filter by a literal month name per column instead of a selector
+  cell) and the `TOTAL` column's `=SUM(B{R}:M{R})` pattern, plus its own `TOTAL`
+  row's per-column `SUM()` range.
+- Also fetch each tab's numeric **sheet ID** (`gid`) via `spreadsheets.get` — needed
+  for the `insertDimension` request's `range.sheetId` field (a different value from
+  the tab's string name).
 
-    expect(appendSpy).toHaveBeenCalledTimes(2);
-    expect(appendSpy.mock.calls[0][0].requestBody.values).toEqual([['🎮 Gaming', 50, 0, 50, 0, '⬜ N/A']]);
-    expect(appendSpy.mock.calls[1][0].requestBody.values[0][0]).toBe('🎮 Gaming');
-  });
-});
-```
+Write these down as you confirm them; the implementation below only works if these
+are accurate, so verify live rather than trusting the prose above as gospel.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Write the failing test**
+
+Test the **row-finding and formula-templating logic** as a unit, not the live Sheets
+calls (which get exercised in the live-verification step). Mock `./client` to
+return a fixed sheet state (a header, two category rows with realistic formulas,
+and a TOTAL row) and assert that `addCategory` issues a `batchUpdate` call
+containing an `insertDimension` request targeting the row immediately before
+TOTAL, plus a `values.update` (or the `batchUpdate`'s own cell-value payload) that
+writes the new category's row with formulas whose row-relative parts (e.g. `B{row}`,
+`C{row}`, `E{row}`) reference the newly inserted row number, and a further write
+that updates TOTAL's `SUM()` range to include it. Write this test using the exact
+formula shapes you confirmed in Step 1 — do not guess placeholder formula text.
+
+- [ ] **Step 3: Run test to verify it fails**
 
 Run: `npm test -- lib/sheets/budgets.test.ts`
-Expected: FAIL — `addCategory` is not exported.
+Expected: FAIL — `addCategory` doesn't exist yet (or doesn't yet do row-insertion).
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 4: Implement**
 
-```typescript
-// append to lib/sheets/budgets.ts
-import { ANNUAL_SUMMARY_RANGE } from './layout';
+Implement `addCategory` to, for each tab (Monthly Budget and Annual Summary):
+1. Fetch the tab's current rows (with `valueRenderOption: 'FORMULA'`) to find the
+   `TOTAL` row's index/sheet-row-number and to read a sibling category row's
+   formulas as a template.
+2. Issue a `spreadsheets.batchUpdate` with an `insertDimension` request
+   (`{ range: { sheetId, dimension: 'ROWS', startIndex: totalRowIndex0Based, endIndex: totalRowIndex0Based + 1 }, inheritFromBefore: true }`)
+   to insert one blank row immediately above TOTAL (0-based `startIndex` — the
+   Sheets API's `insertDimension` uses 0-based row indices, distinct from the
+   1-based row numbers used elsewhere in this codebase; be careful not to mix
+   them up).
+3. Write the new category's row: `Category`/`Budget` as the literal values
+   provided, and `Spent`/`Remaining`/`%Used`/`Status` as formula strings derived
+   from the template row — the `Spent` formula copied verbatim except the
+   category-name string literal is swapped for the new category, and
+   `Remaining`/`%Used`/`Status` with the template row's row-number references
+   replaced by the newly-inserted row's actual row number.
+4. Rewrite the `TOTAL` row's `SUM()`-based formulas (whichever columns hold them)
+   to extend their range through the newly-inserted row.
+5. Do the equivalent for Annual Summary (per-month `SUMPRODUCT` columns instead of
+   one `Spent` column, using the month-literal formulas discovered in Step 1).
 
-export async function addCategory(input: { emoji: string; name: string; startingBudget: number }): Promise<void> {
-  const sheets = await getSheetsClient();
-  const spreadsheetId = getSpreadsheetId();
-  const categoryLabel = `${input.emoji} ${input.name}`;
-  const budgetTab = BUDGET_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
-  const annualTab = ANNUAL_SUMMARY_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+Use `valueInputOption: 'USER_ENTERED'` for any `values.update` calls so formula
+strings are interpreted as formulas, not literal text.
 
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `'${budgetTab}'!A:F`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[categoryLabel, input.startingBudget, 0, input.startingBudget, 0, '⬜ N/A']] },
-  });
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `'${annualTab}'!A:N`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[categoryLabel, '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']] },
-  });
-}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 5: Run test to verify it passes**
 
 Run: `npm test -- lib/sheets/budgets.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: API route and form**
+- [ ] **Step 6: API route and form**
 
 ```typescript
 // app/api/categories/route.ts
@@ -1611,13 +1646,21 @@ export function AddCategoryForm() {
 
 Add `<AddCategoryForm />` above the category list in `app/categories/page.tsx`.
 
-- [ ] **Step 6: Verify in the browser**
+- [ ] **Step 7: Verify in the browser (or via authenticated curl)**
 
-On `/categories`, submit the form with a new category name and starting budget.
-Confirm it appears in the list after the page refreshes, and check the dev copy
-sheet directly to confirm both the budget tab and annual summary tab got new rows.
+On `/categories`, submit the form with an obviously-fake test category (e.g.
+`🧪 ZZZ_TEST_DELETE_ME`). Confirm it appears in the list, inserted among the other
+categories (not after a TOTAL row), and check the dev copy sheet directly to
+confirm: (a) both tabs got new rows in the right position, (b) the new row's
+Spent/Remaining/%Used/Status are real formulas (not static values) matching the
+sibling pattern, and (c) each tab's TOTAL row's formulas now include the new row
+in their range — change the TOTAL's computed Budget value should increase by
+exactly the new category's starting budget. Then remove the test category
+afterward using a `batchUpdate` `deleteDimension` request (the mirror image of the
+`insertDimension` used to add it), and re-verify TOTAL drops back to its original
+value — leaving the dev sheet exactly as it was found.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add lib/sheets/budgets.ts lib/sheets/budgets.test.ts app/api/categories/route.ts app/components/AddCategoryForm.tsx app/categories/page.tsx
