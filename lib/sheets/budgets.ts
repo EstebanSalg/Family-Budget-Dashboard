@@ -80,24 +80,49 @@ function substituteCategoryLiteral(formula: string, oldLabel: string, newLabel: 
   return formula.split(oldLabel).join(newLabel);
 }
 
-// Inserts a new category row immediately above the Monthly Budget tab's
-// TOTAL row (via batchUpdate insertDimension, shifting TOTAL down by one),
-// writes the new row's Spent/Remaining/%Used/Status as formulas derived from
-// an existing category row's live formulas, and rewrites TOTAL's SUM()
-// ranges to include the new row.
-async function insertMonthlyBudgetRow(
+// Context handed to a tab's row-value builders once the shared mechanics
+// (fetch, locate TOTAL, pick the template row, compute row numbers) have
+// run. `templateRow`/`totalRow` are the raw FORMULA-rendered cell arrays for
+// the template category row and the (pre-shift) TOTAL row respectively.
+type NewRowContext = {
+  templateRow: unknown[];
+  templateCategoryLabel: string;
+  templateSheetRow: number;
+  newCategoryRow: number;
+};
+
+type TotalRowContext = {
+  totalRow: unknown[];
+  oldTotalSheetRow: number;
+  newTotalRow: number;
+  newCategoryRow: number;
+};
+
+// Shared mechanics for inserting a new category row immediately above a
+// tab's TOTAL row (via batchUpdate insertDimension, shifting TOTAL down by
+// one), writing the new row's formulas, and rewriting TOTAL's formulas to
+// include it. Monthly Budget and Annual Summary differ only in column
+// layout (6 columns vs. 14, and which columns TOTAL sums) -- that
+// difference is captured entirely by `lastColumn`/`totalFirstColumn` and the
+// two builder callbacks, which are given the exact same template/TOTAL rows
+// and computed row numbers this function already worked out.
+async function insertCategoryRowAboveTotal(
   sheets: Awaited<ReturnType<typeof getSheetsClient>>,
   spreadsheetId: string,
   sheetId: number,
-  categoryLabel: string,
-  startingBudget: number
+  range: string,
+  lastColumn: string,
+  totalFirstColumn: string,
+  totalLastColumn: string,
+  buildNewRowValues: (ctx: NewRowContext) => unknown[],
+  buildTotalRowValues: (ctx: TotalRowContext) => unknown[]
 ): Promise<void> {
-  const tabName = tabNameOf(BUDGET_RANGE);
-  const rangeStartRow = rangeStartRowOf(BUDGET_RANGE);
+  const tabName = tabNameOf(range);
+  const rangeStartRow = rangeStartRowOf(range);
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: BUDGET_RANGE,
+    range,
     valueRenderOption: 'FORMULA',
   });
   const rows = res.data.values ?? [];
@@ -120,10 +145,12 @@ async function insertMonthlyBudgetRow(
   const newCategoryRow = oldTotalSheetRow;
   const newTotalRow = oldTotalSheetRow + 1;
 
-  const spentFormula = substituteCategoryLiteral(String(templateRow[2]), templateCategoryLabel, categoryLabel);
-  const remainingFormula = shiftRowRefs(String(templateRow[3]), templateSheetRow, newCategoryRow);
-  const percentFormula = shiftRowRefs(String(templateRow[4]), templateSheetRow, newCategoryRow);
-  const statusFormula = shiftRowRefs(String(templateRow[5]), templateSheetRow, newCategoryRow);
+  const newRowValues = buildNewRowValues({
+    templateRow,
+    templateCategoryLabel,
+    templateSheetRow,
+    newCategoryRow,
+  });
 
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
@@ -141,11 +168,9 @@ async function insertMonthlyBudgetRow(
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${tabName}'!A${newCategoryRow}:F${newCategoryRow}`,
+    range: `'${tabName}'!A${newCategoryRow}:${lastColumn}${newCategoryRow}`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: {
-      values: [[categoryLabel, startingBudget, spentFormula, remainingFormula, percentFormula, statusFormula]],
-    },
+    requestBody: { values: [newRowValues] },
   });
 
   // Extend TOTAL's existing SUM formulas by appending the new row as an
@@ -159,99 +184,91 @@ async function insertMonthlyBudgetRow(
   // old formula already covered and adds exactly the one new row, so
   // TOTAL's computed value changes by exactly the new row's own value.
   const totalRow = rows[totalFetchedIndex];
-  const budgetSumFormula = `${String(totalRow[1])}+B${newCategoryRow}`;
-  const spentSumFormula = `${String(totalRow[2])}+C${newCategoryRow}`;
-  const remainingSumFormula = `${String(totalRow[3])}+D${newCategoryRow}`;
-  const totalPercentFormula = shiftRowRefs(String(totalRow[4]), oldTotalSheetRow, newTotalRow);
+  const totalRowValues = buildTotalRowValues({
+    totalRow,
+    oldTotalSheetRow,
+    newTotalRow,
+    newCategoryRow,
+  });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${tabName}'!B${newTotalRow}:E${newTotalRow}`,
+    range: `'${tabName}'!${totalFirstColumn}${newTotalRow}:${totalLastColumn}${newTotalRow}`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: {
-      values: [[budgetSumFormula, spentSumFormula, remainingSumFormula, totalPercentFormula]],
-    },
+    requestBody: { values: [totalRowValues] },
   });
 }
 
-// Same approach as insertMonthlyBudgetRow, for the Annual Summary tab: 12
-// per-month SUMPRODUCT columns (B..M) instead of one Spent column, plus a
-// per-category annual TOTAL column (N). There is no Budget column here, so
-// no startingBudget is written.
+// Monthly Budget tab: Category/Budget (literal) + Spent/Remaining/%Used/Status
+// (formulas derived from the template row), columns A-F. TOTAL sums B-E.
+async function insertMonthlyBudgetRow(
+  sheets: Awaited<ReturnType<typeof getSheetsClient>>,
+  spreadsheetId: string,
+  sheetId: number,
+  categoryLabel: string,
+  startingBudget: number
+): Promise<void> {
+  await insertCategoryRowAboveTotal(
+    sheets,
+    spreadsheetId,
+    sheetId,
+    BUDGET_RANGE,
+    'F',
+    'B',
+    'E',
+    ({ templateRow, templateCategoryLabel, templateSheetRow, newCategoryRow }) => {
+      const spentFormula = substituteCategoryLiteral(String(templateRow[2]), templateCategoryLabel, categoryLabel);
+      const remainingFormula = shiftRowRefs(String(templateRow[3]), templateSheetRow, newCategoryRow);
+      const percentFormula = shiftRowRefs(String(templateRow[4]), templateSheetRow, newCategoryRow);
+      const statusFormula = shiftRowRefs(String(templateRow[5]), templateSheetRow, newCategoryRow);
+      return [categoryLabel, startingBudget, spentFormula, remainingFormula, percentFormula, statusFormula];
+    },
+    ({ totalRow, oldTotalSheetRow, newTotalRow, newCategoryRow }) => {
+      const budgetSumFormula = `${String(totalRow[1])}+B${newCategoryRow}`;
+      const spentSumFormula = `${String(totalRow[2])}+C${newCategoryRow}`;
+      const remainingSumFormula = `${String(totalRow[3])}+D${newCategoryRow}`;
+      const totalPercentFormula = shiftRowRefs(String(totalRow[4]), oldTotalSheetRow, newTotalRow);
+      return [budgetSumFormula, spentSumFormula, remainingSumFormula, totalPercentFormula];
+    }
+  );
+}
+
+// Annual Summary tab: Category (literal) + 12 per-month SUMPRODUCT columns
+// (B-M, each filtered by a literal month string rather than row-relative)
+// + a per-category annual TOTAL column (N, row-relative), columns A-N. TOTAL
+// sums B-N. There is no Budget column here, so no startingBudget is written.
 async function insertAnnualSummaryRow(
   sheets: Awaited<ReturnType<typeof getSheetsClient>>,
   spreadsheetId: string,
   sheetId: number,
   categoryLabel: string
 ): Promise<void> {
-  const tabName = tabNameOf(ANNUAL_SUMMARY_RANGE);
-  const rangeStartRow = rangeStartRowOf(ANNUAL_SUMMARY_RANGE);
-
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: ANNUAL_SUMMARY_RANGE,
-    valueRenderOption: 'FORMULA',
-  });
-  const rows = res.data.values ?? [];
-
-  const totalFetchedIndex = rows.findIndex((row) => row[0] === 'TOTAL');
-  if (totalFetchedIndex === -1) throw new Error(`Could not find TOTAL row in '${tabName}'`);
-  if (rows.length < 2) throw new Error(`No category row found to use as a formula template in '${tabName}'`);
-
-  const templateFetchedIndex = 1;
-  const templateRow = rows[templateFetchedIndex];
-  const templateCategoryLabel = String(templateRow[0]);
-  const templateSheetRow = rangeStartRow + templateFetchedIndex;
-  const oldTotalSheetRow = rangeStartRow + totalFetchedIndex;
-  const newCategoryRow = oldTotalSheetRow;
-  const newTotalRow = oldTotalSheetRow + 1;
-
-  // Columns B..M (indices 1..12) are the 12 month SUMPRODUCT formulas, each
-  // filtered by a literal month string (not row-relative) -- only the
-  // category-name literal needs to change. Column N (index 13) is the
-  // per-category annual TOTAL, "=SUM(B{row}:M{row})", which is row-relative.
-  const monthFormulas = templateRow
-    .slice(1, 13)
-    .map((cell) => substituteCategoryLiteral(String(cell), templateCategoryLabel, categoryLabel));
-  const rowTotalFormula = shiftRowRefs(String(templateRow[13]), templateSheetRow, newCategoryRow);
-
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          insertDimension: {
-            range: { sheetId, dimension: 'ROWS', startIndex: newCategoryRow - 1, endIndex: newCategoryRow },
-            inheritFromBefore: true,
-          },
-        },
-      ],
-    },
-  });
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `'${tabName}'!A${newCategoryRow}:N${newCategoryRow}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: {
-      values: [[categoryLabel, ...monthFormulas, rowTotalFormula]],
-    },
-  });
-
-  // Same "extend, don't recompute" strategy as insertMonthlyBudgetRow's
-  // TOTAL rewrite -- see the comment there for why.
-  const totalRow = rows[totalFetchedIndex];
   const columnLetters = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
-  const totalFormulas = columnLetters.map(
-    (col, i) => `${String(totalRow[i + 1])}+${col}${newCategoryRow}`
-  );
 
-  await sheets.spreadsheets.values.update({
+  await insertCategoryRowAboveTotal(
+    sheets,
     spreadsheetId,
-    range: `'${tabName}'!B${newTotalRow}:N${newTotalRow}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [totalFormulas] },
-  });
+    sheetId,
+    ANNUAL_SUMMARY_RANGE,
+    'N',
+    'B',
+    'N',
+    ({ templateRow, templateCategoryLabel, templateSheetRow, newCategoryRow }) => {
+      // Columns B..M (indices 1..12) are the 12 month SUMPRODUCT formulas,
+      // each filtered by a literal month string (not row-relative) -- only
+      // the category-name literal needs to change. Column N (index 13) is
+      // the per-category annual TOTAL, "=SUM(B{row}:M{row})", which is
+      // row-relative.
+      const monthFormulas = templateRow
+        .slice(1, 13)
+        .map((cell) => substituteCategoryLiteral(String(cell), templateCategoryLabel, categoryLabel));
+      const rowTotalFormula = shiftRowRefs(String(templateRow[13]), templateSheetRow, newCategoryRow);
+      return [categoryLabel, ...monthFormulas, rowTotalFormula];
+    },
+    ({ totalRow, newCategoryRow }) => {
+      return columnLetters.map((col, i) => `${String(totalRow[i + 1])}+${col}${newCategoryRow}`);
+    }
+  );
 }
 
 export async function addCategory(input: { emoji: string; name: string; startingBudget: number }): Promise<void> {
