@@ -12,6 +12,29 @@
 //
 // Update these constants (not the code that uses them) if the sheet is
 // restructured — re-run `npm run discover-layout` first to get fresh values.
+//
+// IMPORTANT: Header-row inclusion inconsistency across ranges
+// ═════════════════════════════════════════════════════════════════════════════
+// The five *_RANGE constants below do NOT use one uniform convention for
+// whether the header row is included in the fetched data:
+//   - EXPENSE_LOG_RANGE starts AFTER its header row (row 1 is a data row, not
+//     a header row). Every row in the fetched range is a data row.
+//   - BUDGET_RANGE, ANNUAL_SUMMARY_RANGE, DEBT_TRACKER_RANGE, and
+//     RECURRING_RANGE all start AT their header row (row 1 of the fetched
+//     range is the header row).
+//
+// This inconsistency is safe in the consuming code (currently):
+//   - Budget, Annual Summary, and Debt Tracker readers filter rows by checking
+//     for known header/total label strings (e.g., skipping any row where the
+//     first cell equals 'Category', 'Name', or 'TOTAL') — this filtering works
+//     correctly whether or not a header row is present in the fetched range.
+//   - Recurring Expenses reader treats the first row of RECURRING_RANGE as the
+//     header on purpose, because RECURRING_RANGE is designed to start at the
+//     real header row.
+//
+// Code consuming these ranges must account for this per-range inconsistency,
+// not assume uniform behavior across all five ranges.
+// ═════════════════════════════════════════════════════════════════════════════
 
 // --- Expense Log tab ---
 // Row 1 is the header (Date, Amount, Category, Description, Source, Month,
