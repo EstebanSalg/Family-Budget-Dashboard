@@ -18,6 +18,9 @@
 - Sheets writes must be optimistic on the client with rollback + a visible error on failure — no silent write failures (spec §6).
 - No bank-sync aggregator (Plaid/Flinks) integration in this plan — explicitly deferred (spec §9).
 - No per-user accounts — a single shared password only (spec §9).
+- Google auth stays in OAuth "Testing" publishing status (not "Production") —
+  full verification requires domain ownership neither party has. Refresh tokens
+  therefore expire every 7 days; Task 18 provides the in-app recovery path.
 
 ---
 
@@ -41,17 +44,24 @@ email — the app authenticates as the account that already owns it.
    User type **External**; fill in app name (e.g. "Budget Dashboard"), user support
    email, and developer contact email (your own email is fine for all three); add
    the scope `https://www.googleapis.com/auth/spreadsheets`; add your own Google
-   account under "Test users". Then click **Publish App** to move it out of
-   "Testing" status — apps left in Testing status get refresh tokens that expire
-   after 7 days, which would silently break the daily recurring-expense cron
-   (Task 14). Publishing without going through Google's full verification is fine
-   for personal use with a handful of users; anyone signing in just sees an
-   "unverified app" warning they click through, which is expected here since it's
-   your own app for your own use.
+   account under "Test users". **Leave it in "Testing" status** — moving to
+   "Production" requires Google's full app verification, including proof of
+   domain ownership for the homepage URL via Google Search Console, which is
+   disproportionate for a two-person household app (this was tried and hit a hard
+   wall: a Claude Artifact-hosted page can never pass domain-ownership
+   verification since neither party owns that domain). The practical consequence
+   of staying in Testing: refresh tokens expire after **7 days**, unconditionally.
+   Task 18 below adds an in-app "Reconnect Google Sheets" flow so recovering from
+   that is a 30-second in-app action rather than a trip back through Google Cloud
+   Console.
 3. **Create an OAuth Client ID** (APIs & Services → Credentials → Create
    Credentials → OAuth client ID): Application type **Web application**; under
-   "Authorized redirect URIs" add `https://developers.google.com/oauthplayground`.
-   Note the **Client ID** and **Client Secret** it gives you.
+   "Authorized redirect URIs" add `https://developers.google.com/oauthplayground`
+   (for the one-time refresh token below) **and** `http://localhost:3000/api/auth/google/callback`
+   plus `https://<your-deployed-app-domain>/api/auth/google/callback` (for Task
+   18's in-app reconnect flow — the production URL can be added once the app is
+   deployed and its domain is known). Note the **Client ID** and **Client
+   Secret** it gives you.
 4. **Get a refresh token via Google's OAuth Playground**
    (https://developers.google.com/oauthplayground/):
    - Click the gear icon (top right) → check "Use your own OAuth credentials" →
@@ -2850,13 +2860,144 @@ finished repo and README to the user for that step rather than attempting it.
 
 ---
 
+### Task 18: Reconnect Google Sheets (In-App OAuth Refresh)
+
+The app stays in Google's "Testing" publishing status (see Setup Prerequisites),
+which means the refresh token expires every 7 days. This task adds a one-click,
+in-app way to mint a new one without leaving the app.
+
+**Files:**
+- Create: `app/api/auth/google/start/route.ts`, `app/api/auth/google/callback/route.ts`, `app/reconnect/page.tsx`
+- Modify: `app/components/NavBar.tsx` (add a "Reconnect" link)
+
+**Interfaces:** none consumed from earlier tasks beyond `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET` (Task 2's env vars); produces no exports other later tasks depend on — this is a leaf feature.
+
+- [ ] **Step 1: Start route — redirect to Google's consent screen**
+
+```typescript
+// app/api/auth/google/start/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { google } from 'googleapis';
+
+export async function GET(req: NextRequest) {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return NextResponse.json({ error: 'GOOGLE_OAUTH_CLIENT_ID/SECRET not set' }, { status: 500 });
+  }
+
+  const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`;
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  return NextResponse.redirect(authUrl);
+}
+```
+
+- [ ] **Step 2: Callback route — exchange the code, show the new refresh token**
+
+```typescript
+// app/api/auth/google/callback/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { google } from 'googleapis';
+
+export async function GET(req: NextRequest) {
+  const code = new URL(req.url).searchParams.get('code');
+  if (!code) {
+    return NextResponse.json({ error: 'Missing authorization code' }, { status: 400 });
+  }
+
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return NextResponse.json({ error: 'GOOGLE_OAUTH_CLIENT_ID/SECRET not set' }, { status: 500 });
+  }
+
+  const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`;
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+  const { tokens } = await oauth2Client.getToken(code);
+  if (!tokens.refresh_token) {
+    return new NextResponse(
+      '<p>Google did not return a refresh token. This usually means access was already granted once before — revoke it at <a href="https://myaccount.google.com/permissions">Google Account permissions</a> and try again.</p>',
+      { headers: { 'Content-Type': 'text/html' } }
+    );
+  }
+
+  return new NextResponse(
+    `<!doctype html><html><body style="font-family: sans-serif; max-width: 600px; margin: 40px auto;">
+      <h1>New refresh token</h1>
+      <p>Copy this value into <code>GOOGLE_OAUTH_REFRESH_TOKEN</code> in your Vercel project's environment variables, then redeploy:</p>
+      <textarea readonly style="width: 100%; height: 4em; font-family: monospace;">${tokens.refresh_token}</textarea>
+      <p>This page does not store this value anywhere — copy it now.</p>
+    </body></html>`,
+    { headers: { 'Content-Type': 'text/html' } }
+  );
+}
+```
+
+- [ ] **Step 3: Reconnect page**
+
+```tsx
+// app/reconnect/page.tsx
+export default function ReconnectPage() {
+  return (
+    <main className="min-h-screen space-y-4 bg-slate-950 p-6 text-slate-100">
+      <h1 className="text-2xl font-semibold">Reconnect Google Sheets</h1>
+      <p className="text-slate-400">
+        Use this if the dashboard stops updating because the Google connection
+        expired (this happens roughly every 7 days while the app is in Google's
+        &quot;Testing&quot; publishing status). Clicking through asks you to sign
+        in with Google and shows a new value to paste into Vercel.
+      </p>
+      <a
+        href="/api/auth/google/start"
+        className="inline-block rounded bg-blue-600 px-4 py-2 text-sm font-medium"
+      >
+        Connect Google Sheets
+      </a>
+    </main>
+  );
+}
+```
+
+Add a `{ href: '/reconnect', label: 'Reconnect' }` entry to the `links` array in
+`app/components/NavBar.tsx` (Task 16).
+
+- [ ] **Step 4: Verify in the browser**
+
+Ensure the OAuth Client's "Authorized redirect URIs" (Setup Prerequisites, step 3)
+includes `http://localhost:3000/api/auth/google/callback`. With `npm run dev`
+running, sign in to the dashboard, navigate to `/reconnect`, click "Connect Google
+Sheets," complete the Google consent screen, and confirm the callback page shows a
+new, non-empty refresh token string. This task does not need unit tests — it's a
+thin wrapper around a live OAuth redirect exchange, and the meaningful verification
+is the end-to-end browser flow itself.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/api/auth app/reconnect app/components/NavBar.tsx
+git commit -m "feat: add in-app Google Sheets reconnect flow for Testing-mode token expiry"
+```
+
+---
+
 ## Self-Review Notes
 
 - **Spec coverage:** §4.1 Overview → Task 7; §4.2 Categories → Tasks 8-10; §4.3 Debt
   Tracker → Tasks 11-12; §4.4 Recurring & Automation → Tasks 13-15; §4.5 Annual
   Summary → Task 16; §3 Architecture/Auth → Tasks 1, 2, 6; §5 Data model → Tasks 3,
   10, 13; §7 Testing → unit tests throughout + manual browser passes; §8 Deployment
-  → Task 17. §9 (out of scope) is deliberately not covered by any task.
+  → Task 17. §9 (out of scope) is deliberately not covered by any task. Task 18
+  (added after Task 2's auth approach changed from a service-account key to OAuth,
+  which is capped at a 7-day refresh token in Testing status) is not in the
+  original spec but directly follows from that ruling.
 - **Type consistency:** `Transaction` (Task 5) is the single shape reused by Tasks
   7, 9, 11, 14, 15. `CategoryBudget` (Task 7) is reused by Tasks 8-10. `Debt` (Task
   11) reused by Task 12. `RecurringItem` (Task 13) reused by Tasks 14-15. Field
