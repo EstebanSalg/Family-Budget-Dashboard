@@ -68,7 +68,15 @@ export const DEBT_TRACKER_HEADER_ROW = 2;
 
 // --- Recurring Expenses and Subscriptions section -> the "Recurring Expenses" tab ---
 // Row 1 is a title (" 💸Recurring Expenses and Subscriptions"), row 2 is the
-// real header (Category, Item, ExpectedAmount, Keyword, Type, Notes = 6
-// columns, A-F). Data rows run 3-17. Tab has 1001 total grid rows.
-export const RECURRING_RANGE = "'Recurring Expenses'!A2:F1001";
+// real header. Originally (Task 3 discovery) this was 6 columns (Category,
+// Item, ExpectedAmount, Keyword, Type, Notes = A-F). Task 13 ran a live
+// migration (`ensureRecurringColumns`) that appended 4 new columns —
+// NextDueDate, Frequency, AutoLogEnabled, LastLoggedDate — making the real
+// header 10 columns wide (Category, Item, ExpectedAmount, Keyword, Type,
+// Notes, NextDueDate, Frequency, AutoLogEnabled, LastLoggedDate = A-J).
+// RECURRING_RANGE was extended from A2:F1001 to A2:J1001 in the Task 13
+// fix-round to match — it had been left at the pre-migration 6-column width,
+// which silently truncated every read of the four new columns. Data rows
+// run 3-17. Tab has 1001 total grid rows.
+export const RECURRING_RANGE = "'Recurring Expenses'!A2:J1001";
 export const RECURRING_HEADER_ROW = 2;

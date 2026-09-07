@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { advanceNextDueDate } from './recurring';
+import { RECURRING_RANGE } from './layout';
 
 describe('advanceNextDueDate', () => {
   it('advances weekly by 7 days', () => {
@@ -19,7 +20,7 @@ describe('advanceNextDueDate', () => {
 
 describe('ensureRecurringColumns', () => {
   it('adds missing headers without touching existing ones', async () => {
-    const updateSpy = vi.fn(async () => ({ data: {} }));
+    const updateSpy = vi.fn(async (_req: { requestBody: { values: string[][] } }) => ({ data: {} }));
     vi.doMock('./client', () => ({
       getSheetsClient: vi.fn(async () => ({
         spreadsheets: {
@@ -75,5 +76,55 @@ describe('getRecurringItems', () => {
     expect(items[0].name).toBe('Netflix');
     expect(items[0].category).toBe('🎬 Entertainment');
     expect(items[0].name).not.toBe(items[0].category);
+  });
+
+  it('regression guard: fails if RECURRING_RANGE is too narrow to reach columns G-J', async () => {
+    // Task 13's live migration added 4 new columns (NextDueDate, Frequency,
+    // AutoLogEnabled, LastLoggedDate) after the original 6, making the real
+    // sheet 10 columns wide (A-J). RECURRING_RANGE must extend through column
+    // J to read them back. This test's mock mimics the real Sheets API: a
+    // range that only extends to column F returns ONLY 6 columns of data,
+    // even though the underlying sheet has 10 — exactly what would happen if
+    // RECURRING_RANGE regressed back to `A2:F1001`. Unlike the mock above
+    // (which returns a fixed 10-column row regardless of the requested
+    // range), this one actually exercises the real, too-narrow range string.
+    const fullHeader = ['Category', 'Item', 'ExpectedAmount', 'Keyword', 'Type', 'Notes', 'NextDueDate', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'];
+    const fullDataRow = ['🎬 Entertainment', 'Netflix', '$15.99', 'netflix', 'fixed', '', '2026-10-01', 'Weekly', 'TRUE', '2026-09-01'];
+
+    const columnLetterToIndex = (letters: string) =>
+      letters.split('').reduce((acc, ch) => acc * 26 + (ch.charCodeAt(0) - 64), 0); // 1-based, A=1
+
+    const getSpy = vi.fn(async ({ range }: { range: string }) => {
+      const endCol = range.match(/:([A-Z]+)\d+$/)?.[1] ?? 'Z';
+      const endColIndex = columnLetterToIndex(endCol);
+      return {
+        data: {
+          values: [fullHeader.slice(0, endColIndex), fullDataRow.slice(0, endColIndex)],
+        },
+      };
+    });
+
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: { values: { get: getSpy } },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { getRecurringItems } = await import('./recurring');
+
+    const items = await getRecurringItems();
+
+    // Sanity check: the production code really did request the live constant.
+    expect(getSpy).toHaveBeenCalledWith(expect.objectContaining({ range: RECURRING_RANGE }));
+    expect(items).toHaveLength(1);
+
+    // These would silently fall back to hardcoded defaults ('2026-01-01',
+    // 'Monthly', false, null) if RECURRING_RANGE were too narrow to reach
+    // columns G-J. A regression to `A2:F1001` makes every one of these fail.
+    expect(items[0].nextDueDate.toISOString().slice(0, 10)).toBe('2026-10-01');
+    expect(items[0].frequency).toBe('Weekly');
+    expect(items[0].autoLogEnabled).toBe(true);
+    expect(items[0].lastLoggedDate?.toISOString().slice(0, 10)).toBe('2026-09-01');
   });
 });
