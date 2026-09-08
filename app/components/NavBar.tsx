@@ -6,6 +6,7 @@ const links = [
   { href: '/debts', label: 'Debt Tracker' },
   { href: '/recurring', label: 'Recurring' },
   { href: '/annual', label: 'Annual' },
+  { href: '/reconnect', label: 'Reconnect' },
 ];
 
 export function NavBar() {
