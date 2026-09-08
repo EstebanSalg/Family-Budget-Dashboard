@@ -122,7 +122,7 @@ npm test
 
 - The app authenticates as your own Google account (OAuth 2.0 with refresh token), not as a separate service account
 - In "Testing" status, refresh tokens expire after **7 days**; Task 18 (Reconnect flow) adds an in-app recovery page (`/reconnect`) to get a fresh token without returning to Google Cloud Console
-- To update the refresh token after it expires: visit the `/reconnect` page, sign in with Google again, and the new token will be saved
+- To update the refresh token after it expires: visit the `/reconnect` page, sign in with Google again, and the page will display the new refresh token — it is **not** saved anywhere automatically. Copy it and manually update `GOOGLE_OAUTH_REFRESH_TOKEN` in Vercel's project environment variables, then redeploy for it to take effect
 
 ### Subsequent Deployments
 

@@ -42,9 +42,12 @@ export async function updateCategoryBudget(category: string, newBudget: number):
   const rowIndex = rows.findIndex((row) => row[0] === category);
   if (rowIndex === -1) throw new Error(`Category not found: ${category}`);
 
-  // BUDGET_RANGE starts at row 1 (header); data row N is at sheet row N+1,
-  // and the range itself may start partway down the sheet — derive the sheet
-  // row number from the range's own starting row, not a hardcoded offset.
+  // BUDGET_RANGE starts AT its header row, which is NOT row 1 — the Monthly
+  // Budget tab has a title row and a month-selector row above it, so the header
+  // is row 3 (BUDGET_RANGE = "'Monthly Budget'!A3:F1001", BUDGET_HEADER_ROW = 3).
+  // rows[0] is therefore the header at sheet row 3, and rows[i] is at sheet row
+  // 3 + i. Derive that offset from the range's own starting row rather than
+  // hardcoding it, so updating lib/sheets/layout.ts alone stays sufficient.
   const rangeStartRow = Number(BUDGET_RANGE.match(/(\d+)(?=:)/)?.[1] ?? '1');
   const sheetRow = rangeStartRow + rowIndex;
   const tabName = BUDGET_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
