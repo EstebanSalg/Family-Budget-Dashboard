@@ -2255,9 +2255,19 @@ git commit -m "feat: add recurring-expense repository and column migration"
 
 ### Task 14: Recurring Scheduler Logic and Cron Route
 
+**⚠️ Also requires a middleware update:** `middleware.ts` (Task 6) gates every route behind
+a valid session cookie except `/login` and `/api/login` — it was built before this task's
+cron route existed and has no way to know a real Vercel Cron invocation calls this route
+server-to-server with **no session cookie at all**, only the `Authorization: Bearer
+<CRON_SECRET>` header this route already checks itself. Left as-is, the middleware would
+redirect every real cron call to `/login` before the route handler ever runs — silently
+disabling the entire auto-logging feature in production. `middleware.ts` must also bypass
+`/api/recurring/scheduler` (structured so other cron/webhook-style routes with their own
+independent auth can be added the same way later).
+
 **Files:**
 - Create: `lib/scheduler/computeDue.ts`, `app/api/recurring/scheduler/route.ts`, `vercel.json`
-- Modify: `lib/sheets/expenseLog.ts` (add `appendTransaction`)
+- Modify: `lib/sheets/expenseLog.ts` (add `appendTransaction`), `middleware.ts` (exempt the cron route from the session check)
 - Test: `lib/scheduler/computeDue.test.ts`
 
 **Interfaces:**
@@ -2408,19 +2418,62 @@ value automatically as the `Authorization` header for scheduled cron requests in
 production; for local testing, call the route manually with
 `curl -H "Authorization: Bearer <value>" http://localhost:3000/api/recurring/scheduler`.
 
-- [ ] **Step 6: Verify against the dev sheet**
+- [ ] **Step 6: Exempt the cron route from the session-auth middleware**
+
+```typescript
+// middleware.ts — updated
+import { NextRequest, NextResponse } from 'next/server';
+import { verifySession } from '@/lib/auth/session';
+
+const PUBLIC_PATHS = ['/login', '/api/login'];
+// Routes with their own independent auth (e.g. a Bearer-token check inside the
+// handler itself) instead of the session cookie — add future cron/webhook
+// routes here as they're introduced.
+const INDEPENDENTLY_AUTHENTICATED_PATHS = ['/api/recurring/scheduler'];
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  if (
+    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
+    INDEPENDENTLY_AUTHENTICATED_PATHS.some((p) => pathname.startsWith(p))
+  ) {
+    return NextResponse.next();
+  }
+  const token = req.cookies.get('session')?.value;
+  if (!(await verifySession(token))) {
+    const loginUrl = new URL('/login', req.url);
+    return NextResponse.redirect(loginUrl);
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+This intentionally does NOT weaken protection anywhere else: every other route still
+requires a valid session, and `/api/recurring/scheduler` itself still enforces its own
+`CRON_SECRET` check inside the handler (Step 4 above) — middleware merely stops
+blocking the request before that check gets a chance to run.
+
+- [ ] **Step 7: Verify against the dev sheet**
 
 Add a recurring item via a temporary direct call to `addRecurringItem` (or a scratch
 script) with `nextDueDate` set to today or earlier and `autoLogEnabled: true`. Call
-the scheduler route as shown above. Confirm a new row appears in the dev copy's
-Expense Log with `Source = Auto-Pending`, and note that the recurring item's
-`NextDueDate` in the sheet has NOT changed yet — this task only computes the new
-date; writing it back plus `LastLoggedDate` is done in Task 15's `markLogged`.
+the scheduler route **without** a session cookie, exactly as a real Vercel Cron
+invocation would (just the `Authorization: Bearer <CRON_SECRET>` header, as shown
+above) — confirm it reaches the handler and succeeds rather than redirecting to
+`/login`, proving Step 6's middleware exemption actually works. Confirm a new row
+appears in the dev copy's Expense Log with `Source = Auto-Pending`, and note that the
+recurring item's `NextDueDate` in the sheet has NOT changed yet — this task only
+computes the new date; writing it back plus `LastLoggedDate` is done in Task 15's
+`markLogged`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add lib/scheduler lib/sheets/expenseLog.ts lib/sheets/recurring.ts app/api/recurring/scheduler vercel.json
+git add lib/scheduler lib/sheets/expenseLog.ts lib/sheets/recurring.ts app/api/recurring/scheduler vercel.json middleware.ts
 git commit -m "feat: add recurring-expense auto-logging scheduler"
 ```
 
