@@ -130,8 +130,8 @@ describe('getRecurringItems', () => {
 });
 
 describe('markLogged', () => {
-  it('writes NextDueDate and LastLoggedDate to the row matching the item name', async () => {
-    const updateSpy = vi.fn(async () => ({ data: {} }));
+  it('writes NextDueDate and LastLoggedDate to the row matching the item name, in one batchUpdate call', async () => {
+    const batchUpdateSpy = vi.fn(async () => ({ data: {} }));
     vi.doMock('./client', () => ({
       getSheetsClient: vi.fn(async () => ({
         spreadsheets: {
@@ -142,7 +142,7 @@ describe('markLogged', () => {
                 ['🏠 Housing', 'Rent', '2026-09-01', '2650', 'Monthly', 'TRUE', ''],
               ] },
             })),
-            update: updateSpy,
+            batchUpdate: batchUpdateSpy,
           },
         },
       })),
@@ -170,20 +170,30 @@ describe('markLogged', () => {
     // the rest of the range untouched (Sheets does not clear/skip
     // in-between cells) — confirmed live: it silently overwrote
     // ExpectedAmount/Frequency with the logged-on date and left
-    // LastLoggedDate blank. markLogged now issues two independent
-    // single-cell updates instead, so correctness never depends on the two
-    // columns happening to be adjacent.
-    expect(updateSpy).toHaveBeenCalledTimes(2);
-    expect(updateSpy).toHaveBeenCalledWith(
+    // LastLoggedDate blank.
+    //
+    // Task 15 fix-round: two sequential values.update calls are not atomic —
+    // if the first succeeds and the second fails, NextDueDate advances while
+    // LastLoggedDate stays stale. markLogged now issues a single
+    // values.batchUpdate call carrying both single-cell ranges in its `data`
+    // array, so both cells land in one HTTP request.
+    expect(batchUpdateSpy).toHaveBeenCalledTimes(1);
+    expect(batchUpdateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        range: expect.stringContaining('C3'),
-        requestBody: { values: [['2026-10-01']] },
-      })
-    );
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        range: expect.stringContaining('G3'),
-        requestBody: { values: [['2026-09-05']] },
+        spreadsheetId: 'test-id',
+        requestBody: expect.objectContaining({
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            {
+              range: expect.stringContaining('C3'),
+              values: [['2026-10-01']],
+            },
+            {
+              range: expect.stringContaining('G3'),
+              values: [['2026-09-05']],
+            },
+          ],
+        }),
       })
     );
   });

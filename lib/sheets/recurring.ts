@@ -150,19 +150,30 @@ export async function markLogged(name: string, newNextDueDate: Date, loggedOn: D
   // the remaining cells in the range untouched (Sheets does not clear or
   // skip them) -- confirmed live against the real dev sheet during Task 15
   // verification: it silently overwrote Frequency (H) with the logged-on
-  // date and left LastLoggedDate (J) blank. Write each target column with
-  // its own independent single-cell update so correctness never depends on
-  // the two columns happening to be adjacent.
-  await sheets.spreadsheets.values.update({
+  // date and left LastLoggedDate (J) blank. Write each target column as its
+  // own independent single-cell range so correctness never depends on the
+  // two columns happening to be adjacent.
+  //
+  // The two writes are combined into a single values.batchUpdate call
+  // (rather than two sequential values.update calls) so they land in one
+  // HTTP request: two sequential update calls are not atomic, and a network
+  // blip or transient API error between them could leave NextDueDate
+  // advanced while LastLoggedDate stays stale/unset (Task 15 review
+  // finding).
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range: `'${tab}'!${colLetter(nextDueCol)}${sheetRow}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[newNextDueDate.toISOString().slice(0, 10)]] },
-  });
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `'${tab}'!${colLetter(lastLoggedCol)}${sheetRow}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[loggedOn.toISOString().slice(0, 10)]] },
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        {
+          range: `'${tab}'!${colLetter(nextDueCol)}${sheetRow}`,
+          values: [[newNextDueDate.toISOString().slice(0, 10)]],
+        },
+        {
+          range: `'${tab}'!${colLetter(lastLoggedCol)}${sheetRow}`,
+          values: [[loggedOn.toISOString().slice(0, 10)]],
+        },
+      ],
+    },
   });
 }
