@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { signSession } from '@/lib/auth/session';
 
 export async function POST(req: NextRequest) {
+  const dashboardPassword = process.env.DASHBOARD_PASSWORD;
+  if (!dashboardPassword) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+
   const { password } = await req.json();
-  if (password !== process.env.DASHBOARD_PASSWORD) {
+  if (password !== dashboardPassword) {
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true });

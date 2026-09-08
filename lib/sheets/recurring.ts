@@ -132,8 +132,22 @@ export async function markLogged(name: string, newNextDueDate: Date, loggedOn: D
   const rows = res.data.values ?? [];
   const header = rows[0] ?? [];
   const nameCol = header.indexOf('Item');
-  const rowIndex = rows.findIndex((row) => row[nameCol] === name);
-  if (rowIndex === -1) throw new Error(`Recurring item not found: ${name}`);
+  const matchingIndexes = rows
+    .map((row, i) => (row[nameCol] === name ? i : -1))
+    .filter((i) => i !== -1);
+  if (matchingIndexes.length === 0) throw new Error(`Recurring item not found: ${name}`);
+  // If the sheet ever ends up with two rows sharing the same Item name (a
+  // hand-maintained household sheet makes this plausible), matching by name
+  // alone would silently pick only the first row every time: row A gets its
+  // dates advanced twice and row B never advances, so row B stays
+  // permanently "due" and gets a duplicate expense appended every single
+  // cron run indefinitely, with no error. Fail loudly instead so this shows
+  // up as a visible, one-time cron failure (caught and reported per-item by
+  // the scheduler route) rather than a silent, permanent, compounding bug.
+  if (matchingIndexes.length > 1) {
+    throw new Error(`Multiple recurring items named "${name}" found; cannot determine which row to update`);
+  }
+  const rowIndex = matchingIndexes[0];
 
   const nextDueCol = header.indexOf('NextDueDate');
   const lastLoggedCol = header.indexOf('LastLoggedDate');

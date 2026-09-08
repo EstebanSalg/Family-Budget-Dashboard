@@ -197,4 +197,38 @@ describe('markLogged', () => {
       })
     );
   });
+
+  it('throws instead of silently updating only the first row when two rows share the same Item name', async () => {
+    // A hand-maintained household sheet can plausibly end up with two rows
+    // for the same Item name. Matching by name alone (the pre-fix behavior)
+    // would silently pick only the first match every cron run: that row's
+    // dates get advanced twice, and the second row never advances, so it
+    // stays permanently "due" and gets a duplicate expense appended forever
+    // with no visible error. This must fail loudly instead.
+    const batchUpdateSpy = vi.fn(async () => ({ data: {} }));
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: {
+          values: {
+            get: vi.fn(async () => ({
+              data: { values: [
+                ['Category', 'Item', 'NextDueDate', 'ExpectedAmount', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'],
+                ['🏠 Housing', 'Rent', '2026-09-01', '2650', 'Monthly', 'TRUE', ''],
+                ['🏠 Housing', 'Rent', '2026-09-01', '1200', 'Monthly', 'TRUE', ''],
+              ] },
+            })),
+            batchUpdate: batchUpdateSpy,
+          },
+        },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { markLogged } = await import('./recurring');
+
+    await expect(markLogged('Rent', new Date('2026-10-01'), new Date('2026-09-05'))).rejects.toThrow(
+      /multiple recurring items named "Rent"/i
+    );
+    expect(batchUpdateSpy).not.toHaveBeenCalled();
+  });
 });
