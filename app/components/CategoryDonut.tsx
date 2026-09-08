@@ -9,7 +9,14 @@ export function CategoryDonut({ data }: { data: { category: string; spent: numbe
   return (
     <ResponsiveContainer width="100%" height={240}>
       <PieChart>
-        <Pie data={nonZero} dataKey="spent" nameKey="category" innerRadius={60} outerRadius={90}>
+        <Pie
+          data={nonZero}
+          dataKey="spent"
+          nameKey="category"
+          innerRadius={60}
+          outerRadius={90}
+          isAnimationActive={false}
+        >
           {nonZero.map((entry, i) => (
             <Cell key={entry.category} fill={COLORS[i % COLORS.length]} />
           ))}

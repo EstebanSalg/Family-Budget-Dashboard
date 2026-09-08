@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-09-08T19:49:50.873Z",
+        "reason": "Private password-gated household finance dashboard, not an editorial/marketing surface; system-font fallback stack is intentional and appropriate, not an AI-generated-design smell."
+      }
+    ]
+  }
+}
