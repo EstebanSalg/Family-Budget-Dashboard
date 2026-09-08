@@ -2,6 +2,8 @@ import { getCategoryBudgets } from '@/lib/sheets/budgets';
 import { CategoryRow } from '../components/CategoryRow';
 import { AddCategoryForm } from '../components/AddCategoryForm';
 
+export const revalidate = 60;
+
 export default async function CategoriesPage() {
   const rows = await getCategoryBudgets();
 

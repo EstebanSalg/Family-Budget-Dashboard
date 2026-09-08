@@ -3,6 +3,8 @@ import { getTransactions } from '@/lib/sheets/expenseLog';
 import { RecurringForm } from '../components/RecurringForm';
 import { ConfirmationQueue } from '../components/ConfirmationQueue';
 
+export const revalidate = 60;
+
 export default async function RecurringPage() {
   const [items, transactions] = await Promise.all([getRecurringItems(), getTransactions()]);
   const pending = transactions.filter((t) => t.source === 'Auto-Pending');

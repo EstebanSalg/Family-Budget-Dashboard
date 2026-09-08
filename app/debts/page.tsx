@@ -3,6 +3,8 @@ import { getTransactions } from '@/lib/sheets/expenseLog';
 import { DebtCard } from '../components/DebtCard';
 import { AddDebtForm } from '../components/AddDebtForm';
 
+export const revalidate = 60;
+
 export default async function DebtTrackerPage() {
   const [debts, transactions] = await Promise.all([getDebts(), getTransactions()]);
 

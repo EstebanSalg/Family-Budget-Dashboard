@@ -3,6 +3,8 @@ import { OverviewTiles } from './components/OverviewTiles';
 import { CategoryDonut } from './components/CategoryDonut';
 import { BudgetVsSpentChart } from './components/BudgetVsSpentChart';
 
+export const revalidate = 60;
+
 export default async function OverviewPage() {
   const budgets = await getCategoryBudgets();
 
