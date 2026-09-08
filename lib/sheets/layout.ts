@@ -38,8 +38,16 @@
 
 // --- Expense Log tab ---
 // Row 1 is the header (Date, Amount, Category, Description, Source, Month,
-// Year). Data starts row 2. Tab has 1029 total grid rows.
-export const EXPENSE_LOG_RANGE = "'Expense Log'!A2:G1029";
+// Year). Data starts row 2. Tab had 1029 total grid rows at discovery time
+// (Task 3), but appendTransaction (lib/sheets/expenseLog.ts) appends via the
+// unbounded `'Expense Log'!A:G`, which grows the sheet's grid past 1029 over
+// time -- a read range capped at 1029 would silently stop returning rows
+// beyond it. Widened to 10029 to match the sheet's own pre-existing
+// SUMPRODUCT budget formulas, which already reference `'Expense Log'!B2:B10029`
+// (see the shiftRowRefs comment in lib/sheets/budgets.ts), and the original
+// implementation plan's specified `A2:G5000`. The Sheets API clamps reads to
+// the actual populated grid, so over-provisioning the range here is safe.
+export const EXPENSE_LOG_RANGE = "'Expense Log'!A2:G10029";
 export const EXPENSE_LOG_HEADER_ROW = 1;
 
 // --- Monthly Budget tab (Categories) ---
