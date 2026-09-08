@@ -7,11 +7,18 @@ const PUBLIC_PATHS = ['/login', '/api/login'];
 // routes here as they're introduced.
 const INDEPENDENTLY_AUTHENTICATED_PATHS = ['/api/recurring/scheduler'];
 
+// Matches `prefix` itself or a genuine sub-path (`prefix/...`), unlike a bare
+// `startsWith` which would also match an unrelated sibling that merely shares
+// the prefix as a string, e.g. `/api/recurring/scheduler-status`.
+function matchesPathOrSubpath(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (
-    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
-    INDEPENDENTLY_AUTHENTICATED_PATHS.some((p) => pathname.startsWith(p))
+    PUBLIC_PATHS.some((p) => matchesPathOrSubpath(pathname, p)) ||
+    INDEPENDENTLY_AUTHENTICATED_PATHS.some((p) => matchesPathOrSubpath(pathname, p))
   ) {
     return NextResponse.next();
   }

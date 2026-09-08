@@ -28,6 +28,13 @@ describe('middleware', () => {
     expect(res.headers.get('location')).toBeNull();
   });
 
+  it('does NOT exempt a same-level sibling path that merely shares the scheduler prefix as a string', async () => {
+    const { middleware } = await import('./middleware');
+    const res = await middleware(requestFor('/api/recurring/scheduler-status'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toContain('/login');
+  });
+
   it('still redirects an ordinary protected route with no session cookie', async () => {
     const { middleware } = await import('./middleware');
     const res = await middleware(requestFor('/'));
