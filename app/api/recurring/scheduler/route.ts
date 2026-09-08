@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRecurringItems } from '@/lib/sheets/recurring';
+import { getRecurringItems, markLogged } from '@/lib/sheets/recurring';
 import { computeDueRecurringLogs } from '@/lib/scheduler/computeDue';
 import { appendTransaction } from '@/lib/sheets/expenseLog';
 
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const items = await getRecurringItems();
   const due = computeDueRecurringLogs(items, new Date());
 
-  for (const { item } of due) {
+  for (const { item, newNextDueDate } of due) {
     await appendTransaction({
       date: new Date(),
       amount: item.expectedAmount,
@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       description: `${item.name} (auto)`,
       source: 'Auto-Pending',
     });
+    await markLogged(item.name, newNextDueDate, new Date());
   }
 
   return NextResponse.json({ logged: due.map((d) => d.item.name) });

@@ -128,3 +128,63 @@ describe('getRecurringItems', () => {
     expect(items[0].lastLoggedDate?.toISOString().slice(0, 10)).toBe('2026-09-01');
   });
 });
+
+describe('markLogged', () => {
+  it('writes NextDueDate and LastLoggedDate to the row matching the item name', async () => {
+    const updateSpy = vi.fn(async () => ({ data: {} }));
+    vi.doMock('./client', () => ({
+      getSheetsClient: vi.fn(async () => ({
+        spreadsheets: {
+          values: {
+            get: vi.fn(async () => ({
+              data: { values: [
+                ['Category', 'Item', 'NextDueDate', 'ExpectedAmount', 'Frequency', 'AutoLogEnabled', 'LastLoggedDate'],
+                ['🏠 Housing', 'Rent', '2026-09-01', '2650', 'Monthly', 'TRUE', ''],
+              ] },
+            })),
+            update: updateSpy,
+          },
+        },
+      })),
+      getSpreadsheetId: vi.fn(() => 'test-id'),
+    }));
+    vi.resetModules();
+    const { markLogged } = await import('./recurring');
+
+    await markLogged('Rent', new Date('2026-10-01'), new Date('2026-09-05'));
+
+    // Real schema (Task 3 discovery): column A is "Category", not "Name" — the
+    // item's identifying name is in the "Item" column, and the real header row
+    // is RECURRING_HEADER_ROW (2, from lib/sheets/layout.ts), not row 1. "Rent"
+    // is the data row right after the header, i.e. sheet row 3.
+    //
+    // Deviation from the Task 15 brief's originally-specified assertion (a
+    // single update over range C3:G3): live verification against the real
+    // dev sheet showed that shape corrupts data. NextDueDate and
+    // LastLoggedDate are not adjacent columns in the real 10-column sheet
+    // (NextDueDate=G, Frequency=H, AutoLogEnabled=I, LastLoggedDate=J) — this
+    // mock header reproduces that same non-adjacency, with ExpectedAmount,
+    // Frequency and AutoLogEnabled sitting between NextDueDate (C) and
+    // LastLoggedDate (G). A single values.update over C3:G3 with only two
+    // values writes them starting at the range's top-left cell and leaves
+    // the rest of the range untouched (Sheets does not clear/skip
+    // in-between cells) — confirmed live: it silently overwrote
+    // ExpectedAmount/Frequency with the logged-on date and left
+    // LastLoggedDate blank. markLogged now issues two independent
+    // single-cell updates instead, so correctness never depends on the two
+    // columns happening to be adjacent.
+    expect(updateSpy).toHaveBeenCalledTimes(2);
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        range: expect.stringContaining('C3'),
+        requestBody: { values: [['2026-10-01']] },
+      })
+    );
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        range: expect.stringContaining('G3'),
+        requestBody: { values: [['2026-09-05']] },
+      })
+    );
+  });
+});

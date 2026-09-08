@@ -122,3 +122,47 @@ export async function addRecurringItem(input: {
     requestBody: { values: [row] },
   });
 }
+
+export async function markLogged(name: string, newNextDueDate: Date, loggedOn: Date): Promise<void> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+  const tab = tabName();
+
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!A${RECURRING_HEADER_ROW}:Z1000` });
+  const rows = res.data.values ?? [];
+  const header = rows[0] ?? [];
+  const nameCol = header.indexOf('Item');
+  const rowIndex = rows.findIndex((row) => row[nameCol] === name);
+  if (rowIndex === -1) throw new Error(`Recurring item not found: ${name}`);
+
+  const nextDueCol = header.indexOf('NextDueDate');
+  const lastLoggedCol = header.indexOf('LastLoggedDate');
+  const colLetter = (i: number) => String.fromCharCode(65 + i);
+  // rows[0] (the header) sits at sheet row RECURRING_HEADER_ROW, so the
+  // 1-based sheet row for rows[rowIndex] is RECURRING_HEADER_ROW + rowIndex.
+  const sheetRow = RECURRING_HEADER_ROW + rowIndex;
+
+  // NextDueDate and LastLoggedDate are NOT adjacent columns in the real
+  // 10-column sheet (lib/sheets/layout.ts: NextDueDate=G, Frequency=H,
+  // AutoLogEnabled=I, LastLoggedDate=J). A single values.update spanning the
+  // contiguous nextDueCol..lastLoggedCol range with only two values would
+  // write those two values starting at the range's top-left cell and leave
+  // the remaining cells in the range untouched (Sheets does not clear or
+  // skip them) -- confirmed live against the real dev sheet during Task 15
+  // verification: it silently overwrote Frequency (H) with the logged-on
+  // date and left LastLoggedDate (J) blank. Write each target column with
+  // its own independent single-cell update so correctness never depends on
+  // the two columns happening to be adjacent.
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${tab}'!${colLetter(nextDueCol)}${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[newNextDueDate.toISOString().slice(0, 10)]] },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${tab}'!${colLetter(lastLoggedCol)}${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[loggedOn.toISOString().slice(0, 10)]] },
+  });
+}

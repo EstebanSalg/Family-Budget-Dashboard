@@ -53,3 +53,25 @@ export async function appendTransaction(t: {
     requestBody: { values: [[dateStr, t.amount, t.category, t.description, t.source, month, year]] },
   });
 }
+
+export async function confirmTransaction(originalDescription: string, originalDate: Date, correctedAmount: number): Promise<void> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+  const tab = EXPENSE_LOG_RANGE.match(/^'([^']+)'/)?.[1] ?? '';
+
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: EXPENSE_LOG_RANGE });
+  const rows = res.data.values ?? [];
+  const targetDateStr = originalDate.toISOString().slice(0, 10);
+  const rowIndex = rows.findIndex((row) => row[0] === targetDateStr && row[3] === originalDescription && row[4] === 'Auto-Pending');
+  if (rowIndex === -1) throw new Error('Pending transaction not found');
+
+  const rangeStartRow = Number(EXPENSE_LOG_RANGE.match(/(\d+)(?=:)/)?.[1] ?? '2');
+  const sheetRow = rangeStartRow + rowIndex;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${tab}'!B${sheetRow}:E${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[correctedAmount, rows[rowIndex][2], originalDescription, 'Auto-Confirmed']] },
+  });
+}
