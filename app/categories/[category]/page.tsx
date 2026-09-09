@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getTransactions } from '@/lib/sheets/expenseLog';
 import { getCategoryBudgets } from '@/lib/sheets/budgets';
 import { getSixMonthTrend } from '@/lib/sheets/monthlyTrend';
@@ -16,6 +17,9 @@ export default async function CategoryDetailPage({ params }: { params: { categor
 
   return (
     <main className="min-h-screen space-y-6 bg-slate-950 p-6 text-slate-100">
+      <Link href="/categories" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200 hover:underline">
+        ← Categories
+      </Link>
       <h1 className="text-2xl font-semibold">{category}</h1>
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg bg-slate-900 p-4">

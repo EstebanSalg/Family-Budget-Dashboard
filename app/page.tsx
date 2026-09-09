@@ -3,6 +3,7 @@ import { OverviewTiles } from './components/OverviewTiles';
 import { CategoryDonut } from './components/CategoryDonut';
 import { BudgetVsSpentChart } from './components/BudgetVsSpentChart';
 import { MonthSelector } from './components/MonthSelector';
+import { IncomeVsExpensesBar } from './components/IncomeVsExpensesBar';
 
 export const revalidate = 60;
 
@@ -31,14 +32,17 @@ export default async function OverviewPage() {
         netSavings={netSavings}
         overBudgetCount={overBudgetCount}
       />
+      <IncomeVsExpensesBar income={income} expenses={totalSpent} />
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
         <div className="rounded-lg bg-slate-900 p-4">
-          <h2 className="mb-2 text-sm uppercase text-slate-400">Where Money Is Going</h2>
+          <h2 className="mb-2 text-center text-sm uppercase text-slate-400">Where Money Is Going</h2>
           <CategoryDonut data={expenseRows.map((b) => ({ category: b.category, spent: b.spent }))} />
         </div>
         <div className="rounded-lg bg-slate-900 p-4">
-          <h2 className="mb-2 text-sm uppercase text-slate-400">Budget vs Spent</h2>
-          <BudgetVsSpentChart data={expenseRows.map((b) => ({ category: b.category, budget: b.budget, spent: b.spent }))} />
+          <h2 className="mb-2 text-center text-sm uppercase text-slate-400">Budget vs Spent</h2>
+          <BudgetVsSpentChart
+            data={expenseRows.map((b) => ({ category: b.category, budget: b.budget, spent: b.spent, status: b.status }))}
+          />
         </div>
       </div>
     </main>

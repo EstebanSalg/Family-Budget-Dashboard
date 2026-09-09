@@ -21,7 +21,7 @@ export default async function CategoriesPage() {
           <div className="flex items-center gap-6">
             <span className="w-20 text-right">Spent</span>
             <span className="w-24 text-right">Budget</span>
-            <span className="w-12 text-right">% Spent</span>
+            <span className="w-16 whitespace-nowrap text-right">% Spent</span>
           </div>
         </div>
         {rows.map((row) => (

@@ -1,9 +1,10 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useRouter } from 'next/navigation';
+import { getStatusColor } from '@/lib/statusColor';
 
-type Row = { category: string; budget: number; spent: number };
+type Row = { category: string; budget: number; spent: number; status: string };
 
 export function BudgetVsSpentChart({ data }: { data: Row[] }) {
   const router = useRouter();
@@ -25,7 +26,11 @@ export function BudgetVsSpentChart({ data }: { data: Row[] }) {
         <YAxis type="category" dataKey="category" width={120} />
         <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
         <Bar dataKey="budget" fill="#334155" />
-        <Bar dataKey="spent" fill="#38bdf8" />
+        <Bar dataKey="spent" isAnimationActive={false}>
+          {data.map((entry) => (
+            <Cell key={entry.category} fill={getStatusColor(entry.status)} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

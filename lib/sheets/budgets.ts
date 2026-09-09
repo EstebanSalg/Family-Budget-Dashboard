@@ -9,6 +9,7 @@ export type CategoryBudget = {
   spent: number;
   remaining: number;
   percentUsed: number;
+  status: string;
 };
 
 // The Monthly Budget tab's month-selector cell (BUDGET_MONTH_SELECTOR_CELL)
@@ -62,7 +63,8 @@ export async function getCategoryBudgets(): Promise<CategoryBudget[]> {
     const spent = parseCurrency(String(row[2] ?? ''));
     const remaining = parseCurrency(String(row[3] ?? ''));
     const percentUsed = budget > 0 ? (spent / budget) * 100 : 0;
-    return { category: String(row[0]), budget, spent, remaining, percentUsed };
+    const status = String(row[5] ?? '');
+    return { category: String(row[0]), budget, spent, remaining, percentUsed, status };
   });
 }
 
