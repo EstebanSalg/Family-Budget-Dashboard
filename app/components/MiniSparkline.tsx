@@ -16,6 +16,7 @@ export function MiniSparkline({ data, color }: Props) {
         stroke={color}
         strokeWidth={1.5}
         dot={false}
+        activeDot={false}
         isAnimationActive={false}
       />
     </LineChart>
