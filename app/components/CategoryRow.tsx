@@ -37,7 +37,7 @@ export function CategoryRow({ row }: { row: CategoryBudget }) {
         {row.category}
       </Link>
       <div className="flex items-center gap-6 text-sm">
-        <span>${row.spent.toFixed(2)}</span>
+        <span className="w-20 text-right">${row.spent.toFixed(2)}</span>
         {editing ? (
           <input
             autoFocus
@@ -52,7 +52,7 @@ export function CategoryRow({ row }: { row: CategoryBudget }) {
             ${budget.toFixed(2)}
           </button>
         )}
-        <span>{row.percentUsed.toFixed(0)}%</span>
+        <span className="w-12 text-right">{row.percentUsed.toFixed(0)}%</span>
         {error && <span className="text-red-400">{error}</span>}
       </div>
     </div>

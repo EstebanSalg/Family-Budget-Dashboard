@@ -1,6 +1,7 @@
 import { getSheetsClient, getSpreadsheetId } from './client';
-import { ANNUAL_SUMMARY_RANGE, BUDGET_RANGE } from './layout';
+import { ANNUAL_SUMMARY_RANGE, BUDGET_MONTH_SELECTOR_CELL, BUDGET_RANGE } from './layout';
 import { parseCurrency } from './parse';
+import { MONTH_NAMES } from './months';
 
 export type CategoryBudget = {
   category: string;
@@ -9,6 +10,38 @@ export type CategoryBudget = {
   remaining: number;
   percentUsed: number;
 };
+
+// The Monthly Budget tab's month-selector cell (BUDGET_MONTH_SELECTOR_CELL)
+// drives every category's "Spent" SUMPRODUCT formula, filtered by month name
+// only -- not by year. Reading/writing it changes what getCategoryBudgets()
+// returns without touching any other code path.
+export async function getSelectedMonth(): Promise<string> {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: BUDGET_MONTH_SELECTOR_CELL,
+  });
+
+  return String(res.data.values?.[0]?.[0] ?? '');
+}
+
+export async function setSelectedMonth(month: string): Promise<void> {
+  if (!(MONTH_NAMES as readonly string[]).includes(month)) {
+    throw new Error(`Invalid month: ${month}`);
+  }
+
+  const sheets = await getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: BUDGET_MONTH_SELECTOR_CELL,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[month]] },
+  });
+}
 
 export async function getCategoryBudgets(): Promise<CategoryBudget[]> {
   const sheets = await getSheetsClient();
