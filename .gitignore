@@ -30,6 +30,12 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# Google Apps Script source with hardcoded live credentials (WhatsApp/Claude
+# API keys) -- never commit this; secrets belong in Apps Script's own
+# Script Properties, not in the source file.
+Current_WhatsApp_App_Script.gs
+*.gs
+
 # vercel
 .vercel
 
