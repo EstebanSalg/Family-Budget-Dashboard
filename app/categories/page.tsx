@@ -1,4 +1,6 @@
 import { getCategoryBudgets, getSelectedMonth } from '@/lib/sheets/budgets';
+import { getTransactions } from '@/lib/sheets/expenseLog';
+import { getSixMonthTrend } from '@/lib/sheets/monthlyTrend';
 import { CategoryRow } from '../components/CategoryRow';
 import { AddCategoryForm } from '../components/AddCategoryForm';
 import { MonthSelector } from '../components/MonthSelector';
@@ -6,7 +8,12 @@ import { MonthSelector } from '../components/MonthSelector';
 export const revalidate = 60;
 
 export default async function CategoriesPage() {
-  const [rows, selectedMonth] = await Promise.all([getCategoryBudgets(), getSelectedMonth()]);
+  const [rows, selectedMonth, transactions] = await Promise.all([
+    getCategoryBudgets(),
+    getSelectedMonth(),
+    getTransactions(),
+  ]);
+  const now = new Date();
 
   return (
     <main className="min-h-screen space-y-4 bg-slate-950 p-6 text-slate-100">
@@ -22,10 +29,11 @@ export default async function CategoriesPage() {
             <span className="w-20 text-right">Spent</span>
             <span className="w-24 text-right">Budget</span>
             <span className="w-16 whitespace-nowrap text-right">% Spent</span>
+            <span className="w-[72px] text-right">6 Mo</span>
           </div>
         </div>
         {rows.map((row) => (
-          <CategoryRow key={row.category} row={row} />
+          <CategoryRow key={row.category} row={row} trend={getSixMonthTrend(transactions, row.category, now)} />
         ))}
       </div>
     </main>

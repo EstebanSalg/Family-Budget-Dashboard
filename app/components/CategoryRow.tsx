@@ -4,8 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { CategoryBudget } from '@/lib/sheets/budgets';
 import { getStatusColor } from '@/lib/statusColor';
+import { MiniSparkline } from './MiniSparkline';
 
-export function CategoryRow({ row }: { row: CategoryBudget }) {
+type Trend = { month: string; total: number }[];
+
+export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend }) {
   const [budget, setBudget] = useState(row.budget);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,6 +62,7 @@ export function CategoryRow({ row }: { row: CategoryBudget }) {
             </button>
           )}
           <span className="w-16 whitespace-nowrap text-right">{row.percentUsed.toFixed(0)}%</span>
+          <MiniSparkline data={trend} color={statusColor} />
           {error && <span className="text-red-400">{error}</span>}
         </div>
       </div>

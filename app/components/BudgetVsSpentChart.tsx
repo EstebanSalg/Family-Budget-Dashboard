@@ -23,10 +23,10 @@ export function BudgetVsSpentChart({ data }: { data: Row[] }) {
         }}
       >
         <XAxis type="number" />
-        <YAxis type="category" dataKey="category" width={120} />
+        <YAxis type="category" dataKey="category" width={170} tick={{ fontSize: 13 }} />
         <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-        <Bar dataKey="budget" fill="#334155" />
-        <Bar dataKey="spent" isAnimationActive={false}>
+        <Bar dataKey="budget" fill="#334155" radius={[0, 6, 6, 0]} barSize={14} />
+        <Bar dataKey="spent" isAnimationActive={false} radius={[0, 6, 6, 0]} barSize={14}>
           {data.map((entry) => (
             <Cell key={entry.category} fill={getStatusColor(entry.status)} />
           ))}

@@ -19,7 +19,7 @@ export function CategoryDonut({ data }: { data: { category: string; spent: numbe
             isAnimationActive={false}
           >
             {nonZero.map((entry, i) => (
-              <Cell key={entry.category} fill={COLORS[i % COLORS.length]} />
+              <Cell key={entry.category} fill={COLORS[i % COLORS.length]} stroke="none" />
             ))}
           </Pie>
           <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
