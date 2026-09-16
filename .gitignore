@@ -39,6 +39,9 @@ Current_WhatsApp_App_Script.gs
 # vercel
 .vercel
 
+# crash artifacts
+*.stackdump
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

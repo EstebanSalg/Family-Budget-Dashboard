@@ -16,34 +16,35 @@ export function IncomeVsExpensesBar({ income, expenses }: Props) {
   const savingsRate = hasIncome ? (saved / income) * 100 : expenses > 0 ? -100 : 0;
 
   return (
-    <div className="rounded-lg bg-slate-900 p-4">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm uppercase text-slate-400">Income vs Expenses</h2>
+    <div className="rounded-lg border border-panel-line bg-panel-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.4),0_14px_30px_-16px_rgba(0,0,0,.65)]">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-mono text-[12.5px] uppercase tracking-[0.08em] text-panel-inkMuted">Income vs Expenses</h2>
         <div className="flex gap-4 text-right text-sm">
           <div>
-            <p className="text-xs uppercase text-slate-500">Income</p>
-            <p className="font-semibold" style={{ color: '#4ade80' }}>${income.toFixed(2)}</p>
+            <p className="font-mono text-[10.5px] uppercase text-panel-inkMuted">Income</p>
+            <p className="font-mono font-semibold" style={{ color: STATUS_COLORS.green }}>${income.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase text-slate-500">Expenses</p>
-            <p className="font-semibold" style={{ color: '#fbbf24' }}>${expenses.toFixed(2)}</p>
+            <p className="font-mono text-[10.5px] uppercase text-panel-inkMuted">Expenses</p>
+            <p className="font-mono font-semibold" style={{ color: STATUS_COLORS.amber }}>${expenses.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase text-slate-500">Saved</p>
-            <p className="font-semibold" style={{ color: saved >= 0 ? '#4ade80' : '#f87171' }}>${saved.toFixed(2)}</p>
+            <p className="font-mono text-[10.5px] uppercase text-panel-inkMuted">Saved</p>
+            <p className="font-mono font-semibold" style={{ color: saved >= 0 ? STATUS_COLORS.green : STATUS_COLORS.red }}>${saved.toFixed(2)}</p>
           </div>
         </div>
       </div>
-      <div className="h-8 w-full overflow-hidden rounded bg-slate-800">
+      <div className="h-8 w-full overflow-hidden rounded bg-panel-surface2">
         <div
-          className="flex h-full items-center px-3 text-sm font-medium text-slate-950 transition-[width]"
+          className="flex h-full items-center px-3 font-mono text-sm font-medium text-panel-bg transition-[width]"
           style={{ width: `${Math.max(widthPercent, expenses > 0 ? 8 : 0)}%`, backgroundColor: color }}
         >
           {expenses > 0 && `$${expenses.toFixed(0)}`}
         </div>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
-        Savings rate <span className={savingsRate >= 0 ? 'text-green-400' : 'text-red-400'}>{savingsRate.toFixed(0)}%</span>
+      <p className="mt-1.5 font-mono text-[11.5px] text-panel-inkMuted">
+        Savings rate{' '}
+        <span style={{ color: savingsRate >= 0 ? STATUS_COLORS.green : STATUS_COLORS.red }}>{savingsRate.toFixed(0)}%</span>
       </p>
     </div>
   );

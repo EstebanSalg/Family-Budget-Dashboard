@@ -16,19 +16,27 @@ export default async function CategoriesPage() {
   const now = new Date();
 
   return (
-    <main className="min-h-screen space-y-4 bg-slate-950 p-6 text-slate-100">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Categories</h1>
+    <main className="min-h-screen space-y-5 bg-panel-bg p-6 text-panel-ink">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight">Categories</h1>
+          <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-panel-inkMuted">
+            {rows.length} tracked · brass tick = budget line
+          </p>
+        </div>
         <MonthSelector currentMonth={selectedMonth} />
       </div>
+
       <AddCategoryForm />
-      <div className="rounded-lg bg-slate-900 p-4">
-        <div className="flex items-center justify-between border-b border-slate-700 pb-2 text-xs uppercase tracking-wide text-slate-500">
+
+      <div className="rounded-lg border border-panel-line bg-panel-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.4),0_14px_30px_-16px_rgba(0,0,0,.65)]">
+        <div className="flex items-center justify-between border-b border-panel-line pb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-panel-inkMuted">
           <span>Category</span>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <span className="w-20 text-right">Spent</span>
             <span className="w-24 text-right">Budget</span>
-            <span className="w-16 whitespace-nowrap text-right">% Spent</span>
+            <span className="w-14 whitespace-nowrap text-right">% Used</span>
+            <span className="w-[70px] text-right">Status</span>
             <span className="w-[72px] text-right">6 Mo</span>
           </div>
         </div>

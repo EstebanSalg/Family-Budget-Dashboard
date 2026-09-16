@@ -32,13 +32,13 @@ export function MonthSelector({ currentMonth }: { currentMonth: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm text-slate-400">
-      <span>Showing</span>
+    <div className="flex items-center gap-2 font-mono text-[13px] text-panel-inkMuted">
+      <span className="uppercase tracking-wide">Showing</span>
       <select
         value={month}
         disabled={saving}
         onChange={(e) => changeMonth(e.target.value)}
-        className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100"
+        className="rounded-full border border-panel-line bg-panel-surface px-3 py-1.5 text-panel-ink"
       >
         {MONTH_NAMES.map((m) => (
           <option key={m} value={m}>
@@ -46,7 +46,7 @@ export function MonthSelector({ currentMonth }: { currentMonth: string }) {
           </option>
         ))}
       </select>
-      {error && <span className="text-red-400">{error}</span>}
+      {error && <span className="text-[#EE8478]">{error}</span>}
     </div>
   );
 }

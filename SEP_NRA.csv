@@ -1,0 +1,30 @@
+﻿Filter,Date,Description,Sub-description,Type of Transaction,Amount,Balance
+"Custom filters (select dates and amounts), From date=2026-09-01, To date=2026-09-15",9/15/2026,ei,Canada ,Credit,1286,5233.45
+,9/14/2026,customer transfer dr.,Mb-Credit Card/Loc Pay. ,Debit,-100,3947.45
+,9/14/2026,customer transfer dr.,Mb-Transfer ,Debit,-30,4047.45
+,9/14/2026,deposit,Free Interac E-Transfer ,Credit,30,4077.45
+,9/12/2026,debit memo,Bank The Rest ,Debit,-1.65,4047.45
+,9/12/2026,pos purchase,Apos Walmart Store #     Barrh ,Debit,-58.35,4049.1
+,9/11/2026,debit memo,Bank The Rest ,Debit,-1.59,4107.45
+,9/11/2026,pos purchase,Apos Dollarama #1179     Nepea ,Debit,-38.66,4109.04
+,9/11/2026,pos purchase,Apos Aya Beauty Stud     Ottaw ,Debit,-84.75,4147.7
+,9/11/2026,customer transfer dr.,Investment Purchase ,Debit,-10,4232.45
+,9/10/2026,debit memo,Bank The Rest ,Debit,-5.46,4242.45
+,9/10/2026,pos purchase,Opos Worldremit          Toron ,Debit,-86.99,4247.91
+,9/10/2026,pos purchase,Opos Subway 7618         Nepea ,Debit,-35.34,4334.9
+,9/10/2026,pos purchase,Opos Disney Plus         Burba ,Debit,-19.2,4370.24
+,9/9/2026,debit memo,Bank The Rest ,Debit,-1.57,4389.44
+,9/9/2026,service charge,Monthly Fees ,Debit,-33.95,4391.01
+,9/9/2026,pos purchase,Apos Food Basics 100     Nepea ,Debit,-23.43,4424.96
+,9/8/2026,debit memo,Bank The Rest ,Debit,-6.6,4448.39
+,9/8/2026,pos purchase,Apos Dollarama #0977     Kanat ,Debit,-16.95,4454.99
+,9/8/2026,bill payment,Mb-Flexiti Financial 86219414,Debit,-45.48,4471.94
+,9/8/2026,pos purchase,Aips Skipthedishes       Winni ,Debit,-56.45,4517.42
+,9/4/2026,customer transfer dr.,Investment Purchase ,Debit,-10,4573.87
+,9/3/2026,debit memo,Bank The Rest ,Debit,-2.05,4583.87
+,9/3/2026,pos purchase,Opos Amzn Mktp Ca        866-2 ,Debit,-57.95,4585.92
+,9/2/2026,pos purchase,Opos Worldremit          Toron ,Debit,-86.99,4643.87
+,9/1/2026,pos return,Fpos Walmart Store #3638 Barrh ,Credit,24.86,4730.86
+,9/1/2026,withdrawal,Free Interac E-Transfer ,Debit,-74,4706
+,9/1/2026,withdrawal,Free Interac E-Transfer ,Debit,-1450,4780
+,9/1/2026,ei,Canada ,Credit,1286,6230

@@ -11,9 +11,9 @@ const links = [
 
 export function NavBar() {
   return (
-    <nav className="flex gap-4 border-b border-slate-800 bg-slate-950 px-6 py-3 text-sm text-slate-300">
+    <nav className="flex gap-5 border-b border-panel-line bg-panel-surface px-6 py-3 font-mono text-[13px] uppercase tracking-wide text-panel-inkMuted">
       {links.map((l) => (
-        <Link key={l.href} href={l.href} className="hover:text-white">{l.label}</Link>
+        <Link key={l.href} href={l.href} className="transition-colors hover:text-brass">{l.label}</Link>
       ))}
     </nav>
   );

@@ -28,3 +28,12 @@ export function getRatioColor(ratio: number): string {
   if (ratio > 0) return STATUS_COLORS.green;
   return STATUS_COLORS.neutral;
 }
+
+// Short instrument-panel-style label for a sheet Status cell, e.g. for a
+// pill badge next to a progress bar. Mirrors getStatusColor's same thresholds.
+export function getStatusLabel(status: string): string {
+  if (status.includes('🔴')) return 'Over';
+  if (status.includes('🟡')) return 'Watch';
+  if (status.includes('🟢')) return 'Pass';
+  return 'Unused';
+}
