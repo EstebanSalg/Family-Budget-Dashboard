@@ -1,6 +1,9 @@
 import { getAnnualSummary } from '@/lib/sheets/annualSummary';
 
-export const revalidate = 60;
+// force-dynamic (not ISR): this page reads live Google Sheets data, which
+// isn't reachable during `next build` inside the Docker image (Fly secrets
+// are runtime-only, not build-time) -- always render per-request instead.
+export const dynamic = 'force-dynamic';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

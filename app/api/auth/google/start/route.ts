@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import { getRequestOrigin } from '@/lib/auth/origin';
 
 export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'GOOGLE_OAUTH_CLIENT_ID/SECRET not set' }, { status: 500 });
   }
 
-  const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`;
+  const redirectUri = `${getRequestOrigin(req)}/api/auth/google/callback`;
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
   const authUrl = oauth2Client.generateAuthUrl({

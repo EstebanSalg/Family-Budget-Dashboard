@@ -5,7 +5,10 @@ import { BudgetVsSpentChart } from './components/BudgetVsSpentChart';
 import { MonthSelector } from './components/MonthSelector';
 import { IncomeVsExpensesBar } from './components/IncomeVsExpensesBar';
 
-export const revalidate = 60;
+// force-dynamic (not ISR): this page reads live Google Sheets data, which
+// isn't reachable during `next build` inside the Docker image (Fly secrets
+// are runtime-only, not build-time) -- always render per-request instead.
+export const dynamic = 'force-dynamic';
 
 export default async function OverviewPage() {
   const [budgets, selectedMonth] = await Promise.all([getCategoryBudgets(), getSelectedMonth()]);

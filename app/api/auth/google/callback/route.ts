@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import { getRequestOrigin } from '@/lib/auth/origin';
 
 export async function GET(req: NextRequest) {
   const code = new URL(req.url).searchParams.get('code');
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'GOOGLE_OAUTH_CLIENT_ID/SECRET not set' }, { status: 500 });
   }
 
-  const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`;
+  const redirectUri = `${getRequestOrigin(req)}/api/auth/google/callback`;
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
   const { tokens } = await oauth2Client.getToken(code);
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(
     `<!doctype html><html><body style="font-family: sans-serif; max-width: 600px; margin: 40px auto;">
       <h1>New refresh token</h1>
-      <p>Copy this value into <code>GOOGLE_OAUTH_REFRESH_TOKEN</code> in your Vercel project's environment variables, then redeploy:</p>
+      <p>Copy this value into <code>GOOGLE_OAUTH_REFRESH_TOKEN</code> in your hosting provider's environment variables (Vercel project settings, or <code>fly secrets set GOOGLE_OAUTH_REFRESH_TOKEN=...</code> on Fly.io), then redeploy:</p>
       <textarea readonly style="width: 100%; height: 4em; font-family: monospace;">${tokens.refresh_token}</textarea>
       <p>This page does not store this value anywhere — copy it now.</p>
     </body></html>`,

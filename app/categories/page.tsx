@@ -5,7 +5,10 @@ import { CategoryRow } from '../components/CategoryRow';
 import { AddCategoryForm } from '../components/AddCategoryForm';
 import { MonthSelector } from '../components/MonthSelector';
 
-export const revalidate = 60;
+// force-dynamic (not ISR): this page reads live Google Sheets data, which
+// isn't reachable during `next build` inside the Docker image (Fly secrets
+// are runtime-only, not build-time) -- always render per-request instead.
+export const dynamic = 'force-dynamic';
 
 export default async function CategoriesPage() {
   const [rows, selectedMonth, transactions] = await Promise.all([

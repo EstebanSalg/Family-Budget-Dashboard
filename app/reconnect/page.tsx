@@ -4,9 +4,10 @@ export default function ReconnectPage() {
       <h1 className="text-2xl font-semibold">Reconnect Google Sheets</h1>
       <p className="text-slate-400">
         Use this if the dashboard stops updating because the Google connection
-        expired (this happens roughly every 7 days while the app is in Google's
-        &quot;Testing&quot; publishing status). Clicking through asks you to sign
-        in with Google and shows a new value to paste into Vercel.
+        expired (this happens roughly every 7 days while the app is in
+        Google&apos;s &quot;Testing&quot; publishing status). Clicking through
+        asks you to sign in with Google and shows a new value to paste into
+        your hosting provider&apos;s environment variables (Vercel or Fly.io).
       </p>
       <a
         href="/api/auth/google/start"

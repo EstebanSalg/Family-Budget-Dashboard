@@ -20,7 +20,9 @@ describe('advanceNextDueDate', () => {
 
 describe('ensureRecurringColumns', () => {
   it('adds missing headers without touching existing ones', async () => {
-    const updateSpy = vi.fn(async (_req: { requestBody: { values: string[][] } }) => ({ data: {} }));
+    const updateSpy = vi.fn<[{ requestBody: { values: string[][] } }], Promise<{ data: object }>>(
+      async () => ({ data: {} })
+    );
     vi.doMock('./client', () => ({
       getSheetsClient: vi.fn(async () => ({
         spreadsheets: {

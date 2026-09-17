@@ -4,7 +4,10 @@ import { getCategoryBudgets } from '@/lib/sheets/budgets';
 import { RecurringForm } from '../components/RecurringForm';
 import { ConfirmationQueue } from '../components/ConfirmationQueue';
 
-export const revalidate = 60;
+// force-dynamic (not ISR): this page reads live Google Sheets data, which
+// isn't reachable during `next build` inside the Docker image (Fly secrets
+// are runtime-only, not build-time) -- always render per-request instead.
+export const dynamic = 'force-dynamic';
 
 function groupByCategory(items: RecurringItem[]): [string, RecurringItem[]][] {
   const groups = new Map<string, RecurringItem[]>();

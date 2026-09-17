@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { matchPayments, estimatePayoffDate } from './debts';
 import type { Transaction } from './expenseLog';
 import type { Debt } from './debts';

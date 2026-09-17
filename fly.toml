@@ -1,0 +1,31 @@
+# fly.toml app configuration for salgadorojas-budget-dashboard.
+# Deploys THIS Next.js app in place of the old Express app -- same Fly app
+# name/URL, so no DNS or bookmark changes needed. This app has no local
+# credentials.json or loans.json volume like the old app did -- everything
+# lives in the Google Sheet, reached via OAuth2 env vars set with
+# `fly secrets set`.
+
+app = 'salgadorojas-budget-dashboard'
+primary_region = 'yyz'
+
+[build]
+
+[env]
+  PORT = '8080'
+  NODE_ENV = 'production'
+  # Fly has no external cron trigger (unlike Vercel's vercel.json), so this
+  # turns on instrumentation.ts's in-process hourly timer instead.
+  RUN_IN_PROCESS_SCHEDULER = 'true'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256

@@ -126,7 +126,7 @@ describe('addCategory', () => {
   it('inserts a formula-templated row above TOTAL on both tabs and rewrites TOTAL ranges', async () => {
     const batchUpdateSpy = vi.fn(async () => ({ data: {} }));
     const updateSpy = vi.fn(async () => ({ data: {} }));
-    const getSpy = vi.fn(async (params: any) => {
+    const getSpy = vi.fn(async (params: { range: string }) => {
       if (params.range === "'Monthly Budget'!A3:F1001") return { data: { values: monthlyRows } };
       if (params.range === "'Annual Summary'!A2:N1001") return { data: { values: annualRows } };
       throw new Error(`Unexpected range in test: ${params.range}`);
