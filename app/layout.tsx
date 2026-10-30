@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { NavBar } from "./components/NavBar";
+import { AppShell } from "./components/AppShell";
 
-const archivo = Archivo({
+// Same face as the Family Hub.
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-archivo",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
 });
-const plexMono = IBM_Plex_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-plex-mono",
+  variable: "--font-jetbrains-mono",
 });
 
 export const metadata: Metadata = {
@@ -27,10 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${archivo.variable} ${plexMono.variable} bg-panel-bg font-sans text-panel-ink antialiased`}
+        className={`${jakarta.variable} ${jetbrainsMono.variable} bg-panel-bg font-sans text-panel-ink antialiased`}
       >
-        <NavBar />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

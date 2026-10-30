@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { Transaction } from '@/lib/sheets/expenseLog';
+import { INPUT } from './ui';
 
 export function TransactionSearch({ transactions }: { transactions: Transaction[] }) {
   const [query, setQuery] = useState('');
@@ -17,17 +18,22 @@ export function TransactionSearch({ transactions }: { transactions: Transaction[
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Filter transactions... e.g. gas, walmart"
-        className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2"
+        placeholder="Filter entries, e.g. gas, walmart"
+        aria-label="Filter entries"
+        className={`${INPUT} mb-3 w-full`}
       />
-      <ul className="divide-y divide-slate-800">
-        {filtered.map((t, i) => (
-          <li key={i} className="flex justify-between py-2 text-sm">
-            <span>{t.description}</span>
-            <span>${t.amount.toFixed(2)}</span>
-          </li>
-        ))}
-      </ul>
+      {filtered.length === 0 ? (
+        <p className="py-2 text-sm text-panel-inkMuted">No entries match.</p>
+      ) : (
+        <ul>
+          {filtered.map((t, i) => (
+            <li key={i} className="grid grid-cols-[1fr_auto] gap-3 border-t border-panel-lineSoft py-2.5 text-[14.5px] first:border-t-0">
+              <span className="min-w-0 truncate">{t.description}</span>
+              <span className="font-semibold">${t.amount.toFixed(2)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

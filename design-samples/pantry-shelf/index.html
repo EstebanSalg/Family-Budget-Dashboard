@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pantry Shelf — Household Budget Sample</title>
+<meta name="description" content="An alternative family budget dashboard: every category is a glass jar filled to its share of budget.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --wall: #A9CDE6;
+  --wall-hi: #C6E0F2;
+  --ink: #0E2A47;
+  --ink-soft: #1F4468;
+  --tape: #15181C;
+  --tape-ink: #F4F6F8;
+  --ok: #1B7F4C;
+  --warn: #F2B01E;
+  --over: #C73A28;
+  --teal: #17808A;
+  --oak-1: #CB9A60;
+  --oak-2: #A8783F;
+  --oak-edge: #7B5427;
+  --paper: #FFFFFF;
+  --measure: #F4C20D;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --jar-w: 92px;
+  --cols: 3;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+@media (min-width: 720px)  { :root { --jar-w: 106px; } }
+@media (min-width: 1100px) { :root { --jar-w: 124px; } }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background-color: var(--wall);
+  background-image:
+    radial-gradient(1100px 520px at 12% -6%, var(--wall-hi), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .05  0 0 0 0 .16  0 0 0 0 .28  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+::selection { background: var(--ink); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: var(--ink-soft) transparent; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+.app { max-width: 1180px; margin: 0 auto; padding: 20px 16px 72px; }
+@media (min-width: 720px) { .app { padding: 28px 32px 88px; } }
+
+/* ---------- label-maker tape ---------- */
+.tape {
+  display: inline-flex; align-items: center; gap: .5em;
+  height: 26px; padding: 0 .75em;
+  background: var(--tape); color: var(--tape-ink);
+  font-family: var(--font-display); font-weight: 600; font-size: 14px;
+  letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+  border-radius: 2px;
+  text-shadow: 0 1px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 2px 4px rgba(14,42,71,.3);
+}
+
+/* ---------- top bar ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.month { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.month .tape { min-width: 168px; justify-content: center; font-size: 15px; }
+.step {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: var(--paper); border: 0; border-radius: 50%; cursor: pointer;
+  box-shadow: 0 2px 5px rgba(14,42,71,.28);
+  transition: transform .2s var(--ease-out);
+}
+.step:hover:not(:disabled) { transform: translateY(-1px); }
+.step:active:not(:disabled) { transform: scale(.94); }
+.step:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+.step svg { width: 18px; height: 18px; }
+.sample { margin: 0; font-size: 13px; color: var(--ink-soft); flex-basis: 100%; }
+@media (min-width: 720px) { .sample { flex-basis: auto; order: 3; } }
+
+/* ---------- verdict ---------- */
+.lead { display: grid; gap: 28px; margin-top: 28px; }
+@media (min-width: 900px) { .lead { grid-template-columns: minmax(0, 1fr) 290px; gap: 48px; align-items: start; margin-top: 40px; } }
+h1 {
+  margin: 0; max-width: 14ch;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(2.9rem, 8.5vw, 5.4rem); line-height: .94; letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.sub { margin: 16px 0 0; max-width: 56ch; font-size: 1.125rem; line-height: 1.5; text-wrap: pretty; }
+.sub strong { font-weight: 600; }
+
+/* ---------- tape measure ---------- */
+.measure { margin: 30px 0 0; }
+.rule {
+  position: relative; height: 54px; overflow: hidden;
+  background: var(--measure); border-radius: 4px;
+  box-shadow: 0 6px 10px -4px rgba(14,42,71,.4), inset 0 -3px 0 rgba(0,0,0,.12);
+}
+.rule .spent { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+.tick { position: absolute; bottom: 0; width: 1px; height: 11px; background: rgba(21,24,28,.8); }
+.tick.major { height: 24px; width: 1.5px; }
+.tick.on { background: rgba(255,255,255,.85); }
+.tick-label {
+  position: absolute; top: 5px; transform: translateX(5px);
+  font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .04em;
+  color: rgba(21,24,28,.85);
+}
+.tick-label.on { color: rgba(255,255,255,.9); }
+.measure figcaption { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: 12px; font-size: 15px; }
+.measure figcaption b { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+
+/* ---------- note stuck to the wall ---------- */
+.note {
+  position: relative; background: var(--paper); padding: 26px 20px 18px;
+  border-radius: 3px; transform: rotate(1.2deg);
+  box-shadow: 0 14px 22px -10px rgba(14,42,71,.5), 0 2px 4px rgba(14,42,71,.2);
+}
+@media (max-width: 899px) { .note { transform: rotate(-.6deg); } }
+.note::before {
+  content: ""; position: absolute; top: -11px; left: 50%; width: 86px; height: 24px; transform: translateX(-50%) rotate(-2deg);
+  background: rgba(255,255,255,.55); border: 1px solid rgba(14,42,71,.12); backdrop-filter: blur(2px);
+  box-shadow: 0 1px 2px rgba(14,42,71,.15);
+}
+.note h2 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 700; font-size: 1.7rem; letter-spacing: .02em; text-transform: uppercase; }
+.note ul { list-style: none; margin: 0; padding: 0; }
+.note li { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: baseline; padding: 8px 0; border-top: 1px solid rgba(14,42,71,.14); font-size: 15px; }
+.note li .d { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.note li .a { font-variant-numeric: tabular-nums; font-weight: 500; }
+.note .total { margin: 10px 0 0; padding-top: 10px; border-top: 2px solid var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- legend ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 44px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--ink-soft); }
+.legend li { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.legend svg { width: 22px; height: 22px; flex: none; }
+
+/* ---------- shelves ---------- */
+.shelf-block { margin-top: 26px; }
+.shelf-block h2 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; }
+.shelf-block p.hint { margin: 0 0 6px; font-size: 15px; color: var(--ink-soft); max-width: 60ch; }
+.shelf { position: relative; margin-top: 30px; }
+.shelf-items {
+  position: relative; display: grid; grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 0 4px; align-items: start;
+}
+.board {
+  position: absolute; left: -10px; right: -10px; top: calc(var(--jar-w) * 128 / 108 - 8px); height: 16px; z-index: 0;
+  border-radius: 2px;
+  background: linear-gradient(var(--oak-1), var(--oak-2));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.38), inset 0 -3px 0 var(--oak-edge), 0 16px 18px -8px rgba(14,42,71,.5);
+}
+.jar-btn {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;
+  width: 100%; padding: 0; background: none; border: 0; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.jar-btn::before {
+  content: ""; position: absolute; inset: -6px 0 -8px; border-radius: 12px; z-index: -1;
+  background: rgba(255,255,255,0); transition: background .25s var(--ease-out);
+}
+.jar-btn:hover::before { background: rgba(255,255,255,.22); }
+.jar-btn[aria-pressed="true"]::before { background: rgba(255,255,255,.5); }
+.jar { display: block; width: var(--jar-w); height: auto; overflow: visible; transition: transform .35s var(--ease-out); }
+.jar-btn:hover .jar { transform: translateY(-3px); }
+.jar-btn:active .jar { transform: translateY(0) scale(.98); }
+
+.jar-btn .tape {
+  height: 22px; margin-top: -50px; padding: 0 .55em; font-size: clamp(11px, 3.1vw, 13px); letter-spacing: .07em; gap: .4em;
+  max-width: 100%; transform: rotate(var(--tilt, 0deg));
+}
+.jar-btn .tape .emoji { font-size: 1.15em; line-height: 1; text-shadow: none; }
+.jar-btn .nums {
+  margin-top: 44px; font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.jar-btn .nums small { font-family: var(--font-body); font-weight: 400; font-size: .72rem; color: var(--ink-soft); }
+.pill {
+  display: inline-block; margin-top: 7px; padding: 4px 8px 5px; border-radius: 3px;
+  font-size: 12.5px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pill.ok   { background: var(--ok); color: #fff; }
+.pill.warn { background: var(--warn); color: var(--ink); }
+.pill.over { background: var(--over); color: #fff; }
+.pill.none { background: transparent; color: var(--ink-soft); box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
+.pill.debt { background: var(--teal); color: #fff; }
+
+/* jar parts */
+.liquid { transform-box: fill-box; transform-origin: 50% 100%; }
+.lid { transform-box: view-box; }
+.lid.off { transform: translate(9px, -7px) rotate(-19deg); transform-origin: 14px 27px; }
+.drip { transform-box: fill-box; transform-origin: 50% 0; }
+.anim .liquid { animation: fill 1.15s var(--ease-out) both; animation-delay: calc(var(--i) * 55ms); }
+.anim .lid.off { animation: lift .7s var(--ease-out) both; animation-delay: calc(var(--i) * 55ms + 850ms); }
+.anim .drip { animation: drip .8s var(--ease-out) both; animation-delay: calc(var(--i) * 55ms + 1000ms); }
+@keyframes fill { from { transform: scaleY(0); } }
+@keyframes lift { from { transform: none; } }
+@keyframes drip { from { transform: scaleY(0); } }
+
+/* ---------- detail note under the shelf ---------- */
+.detail {
+  position: relative; margin: 26px 0 4px; padding: 22px 22px 20px; background: var(--paper); border-radius: 3px;
+  box-shadow: 0 14px 22px -10px rgba(14,42,71,.5), 0 2px 4px rgba(14,42,71,.2);
+  animation: slide-in .45s var(--ease-out) both;
+}
+.detail::before {
+  content: ""; position: absolute; top: -11px; left: 38px; width: 78px; height: 22px; transform: rotate(-3deg);
+  background: rgba(255,255,255,.55); border: 1px solid rgba(14,42,71,.12); box-shadow: 0 1px 2px rgba(14,42,71,.15);
+}
+@keyframes slide-in { from { opacity: 0; transform: translateY(-8px); } }
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.detail h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 2rem; letter-spacing: .01em; }
+.close { width: 36px; height: 36px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.close:hover { background: rgba(14,42,71,.08); }
+.close svg { width: 18px; height: 18px; }
+.detail .line { margin: 6px 0 0; max-width: 62ch; font-size: 1.0625rem; }
+.detail .line.soft { color: var(--ink-soft); font-size: 15px; margin-top: 4px; }
+.detail-grid { display: grid; gap: 22px; margin-top: 20px; }
+@media (min-width: 720px) { .detail-grid { grid-template-columns: 280px minmax(0, 1fr); gap: 40px; } }
+.adjust .lab { display: block; margin-bottom: 8px; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.adjust .row { display: flex; align-items: center; gap: 10px; }
+.adjust .val { min-width: 96px; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 2rem; font-variant-numeric: tabular-nums; }
+.adjust .btn {
+  width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer;
+  background: var(--tape); color: var(--tape-ink); border: 0; border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 2px 4px rgba(14,42,71,.3);
+  transition: transform .2s var(--ease-out);
+}
+.adjust .btn:active { transform: scale(.94); }
+.adjust .btn svg { width: 20px; height: 20px; }
+.adjust .help { margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.tx { list-style: none; margin: 0; padding: 0; }
+.tx li { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; padding: 9px 0; border-top: 1px solid rgba(14,42,71,.14); font-size: 15px; }
+.tx li:first-child { border-top: 0; padding-top: 0; }
+.tx .d { font-family: var(--font-display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.tx .a { font-variant-numeric: tabular-nums; font-weight: 500; }
+.tx-title { margin: 0 0 8px; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+
+.foot { margin: 56px 0 0; font-size: 13px; color: var(--ink-soft); max-width: 70ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: A budget you read like a pantry. Every category is a glass jar filled to its share of budget, so "are we OK?" is answered by scanning one shelf, not by reading tiles or a table. Refuses the KPI-tile row, the dark instrument panel, and the card grid.
+OWN-WORLD: Cornflower wall paint, oak shelf boards, clear glass jars with slate lids, black embossed label-maker tape with white letters, a yellow tape measure. Status fills are green / amber / red. Ink-navy type. Barlow Condensed for tape and headings, Barlow for reading.
+STORY: Either of us glances at the phone, reads one plain sentence, spots any jar with its lid off, taps it, and nudges its budget.
+FIRST VIEWPORT: Verdict sentence at display scale, top-left; tape measure of income vs spent beneath it; a taped "Coming up" note on the right; first shelf of jars directly below.
+FORM: Pantry jars with label-maker tags, assigned by the concept roll (seed 041519d8, grounded candidate 6).
+FINISH: Sample only. No DESIGN.md written, so the repo's incumbent dashboard identity stays untouched.
+-->
+<div class="app anim" id="app">
+  <header class="top">
+    <span class="tape">Household</span>
+    <div class="month" role="group" aria-label="Choose month">
+      <button class="step" id="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></button>
+      <span class="tape" id="monthLabel"></span>
+      <button class="step" id="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></button>
+    </div>
+    <p class="sample">Sample layout with synthetic numbers.</p>
+  </header>
+
+  <section class="lead" aria-label="This month at a glance">
+    <div>
+      <h1 id="headline"></h1>
+      <p class="sub" id="sub"></p>
+      <figure class="measure" id="measure"></figure>
+    </div>
+    <aside class="note" id="upcoming" aria-label="Coming up"></aside>
+  </section>
+
+  <ul class="legend" aria-label="How to read the shelf">
+    <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="3" fill="#fff" fill-opacity=".5" stroke="#0E2A47" stroke-width="1.5"/><rect x="5.8" y="13" width="12.4" height="7.2" rx="2" fill="#1B7F4C"/></svg>A jar fills as the budget is used</li>
+    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9" stroke="#0E2A47" stroke-width="2.4" stroke-linecap="round"/><rect x="12" y="5" width="8" height="14" rx="2" fill="none" stroke="#0E2A47" stroke-opacity=".5" stroke-width="1.5"/></svg>The notch marks today's pace</li>
+    <li><span class="sw" style="background:var(--ok)"></span>Under 85%</li>
+    <li><span class="sw" style="background:var(--warn)"></span>85–100%</li>
+    <li><span class="sw" style="background:var(--over)"></span>Over, lid tilted off</li>
+  </ul>
+
+  <main id="shelves" aria-label="Category jars"></main>
+  <section class="shelf-block" id="lower" aria-labelledby="lowerTitle"></section>
+
+  <p class="foot">Credit Cards keeps its own jar but stays out of the monthly totals, because a card payment is money already counted under the category it was spent in. Budgets you change here only live in this preview.</p>
+</div>
+
+<script>
+(() => {
+  /* ---------- synthetic data (replace with the Google Sheet reads) ---------- */
+  const CATS = [
+    { id: 'housing',   e: '🏠', n: 'Housing',       b: 2200, s: 2200.00 },
+    { id: 'groc',      e: '🛒', n: 'Groceries',     b: 900,  s: 842.35 },
+    { id: 'dining',    e: '🍽️', n: 'Dining Out',    b: 350,  s: 412.80 },
+    { id: 'transport', e: '🚗', n: 'Transport',     b: 400,  s: 318.10 },
+    { id: 'util',      e: '💡', n: 'Utilities',     b: 380,  s: 361.44 },
+    { id: 'ent',       e: '🎬', n: 'Entertainment', b: 150,  s: 64.00 },
+    { id: 'cloth',     e: '👗', n: 'Clothing',      b: 200,  s: 231.50 },
+    { id: 'health',    e: '💊', n: 'Health',        b: 250,  s: 118.20 },
+    { id: 'edu',       e: '📚', n: 'Education',     b: 300,  s: 300.00 },
+    { id: 'travel',    e: '✈️', n: 'Travel',        b: 300,  s: 0 },
+    { id: 'tech',      e: '💻', n: 'Tech',          b: 200,  s: 89.99 },
+    { id: 'gifts',     e: '🎁', n: 'Gifts',         b: 150,  s: 140.00 },
+    { id: 'other',     e: '📦', n: 'Other',         b: 120,  s: 47.30 },
+  ];
+  const CARDS = { id: 'cards', e: '💳', n: 'Credit Cards', b: 1500, s: 1320.00, excluded: true };
+  const DEBTS = [
+    { id: 'car',     n: 'Car loan',     total: 18000, paid: 11400, monthly: 450 },
+    { id: 'student', n: 'Student loan', total: 21500, paid: 7200,  monthly: 380 },
+  ];
+  const INCOME = 6400;
+  const TX = {
+    housing:   [[1, 'Rent', 2200]],
+    groc:      [[26, 'Whole Foods', 96.42], [24, 'Costco', 188.17], [21, 'Corner market', 34.80]],
+    dining:    [[27, 'Thai Orchid', 64.20], [25, 'Coffee, two flat whites', 11.40], [23, 'Pizza night', 47.10]],
+    transport: [[27, 'Gas station', 52.30], [22, 'Metro card top-up', 40.00], [18, 'Parking', 14.00]],
+    util:      [[3, 'Electric', 142.00], [3, 'Water and sewer', 71.44], [1, 'Internet', 79.99]],
+    ent:       [[19, 'Cinema', 32.00], [1, 'Streaming', 15.49]],
+    cloth:     [[20, 'Kids winter coat', 118.50], [9, 'Running shoes', 113.00]],
+    health:    [[15, 'Pharmacy', 38.20], [8, 'Dentist co-pay', 80.00]],
+    edu:       [[2, 'Piano lessons', 300.00]],
+    travel:    [],
+    tech:      [[11, 'Phone case and cable', 29.99], [4, 'Cloud storage', 60.00]],
+    gifts:     [[17, 'Birthday present', 85.00], [12, 'Card and wrapping', 55.00]],
+    other:     [[22, 'Hardware store', 31.30], [6, 'Postage', 16.00]],
+    cards:     [[20, 'Card payment', 700.00], [5, 'Card payment', 620.00]],
+  };
+  const UPCOMING = [
+    { day: 1, n: 'Streaming', a: 15.49 },
+    { day: 2, n: 'Electric', a: 142.00 },
+    { day: 3, n: 'Internet', a: 79.99 },
+    { day: 5, n: 'Car insurance', a: 188.00 },
+  ];
+  const SEP_FACTOR = { housing: 1, groc: .97, dining: .92, transport: 1.05, util: .88, ent: .8, cloth: .5, health: .6, edu: 1, travel: 1.3, tech: .3, gifts: 1.1, other: .9, cards: .98 };
+  const MONTHS = [
+    { label: 'September 2026', y: 2026, m: 8, days: 30, day: 30, closed: true },
+    { label: 'October 2026',   y: 2026, m: 9, days: 31, day: 28, closed: false },
+  ];
+
+  /* ---------- helpers ---------- */
+  const r2 = n => Math.round(n * 100) / 100;
+  const money = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const money0 = n => '$' + Math.round(n).toLocaleString('en-US');
+  const list = a => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const statusOf = r => r > 1 ? 'over' : r > .85 ? 'warn' : r > 0 ? 'ok' : 'none';
+  const COLOR = { over: 'var(--over)', warn: 'var(--warn)', ok: 'var(--ok)', none: 'var(--ok)' };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const $ = id => document.getElementById(id);
+
+  const state = { mi: 1, open: null, overrides: {}, anim: true };
+
+  function rowsFor(mi) {
+    const mk = c => {
+      const f = mi === 0 ? SEP_FACTOR[c.id] : 1;
+      const b = state.overrides[mi + ':' + c.id] ?? c.b;
+      return { ...c, b, s: r2(c.s * f), tx: (TX[c.id] || []).map(([d, n, a]) => [d, n, r2(a * f)]) };
+    };
+    return { cats: CATS.map(mk), cards: mk(CARDS) };
+  }
+
+  /* ---------- jar drawing ---------- */
+  const BODY = 'M16 26h68a10 10 0 0 1 10 10v78a10 10 0 0 1-10 10H16a10 10 0 0 1-10-10V36a10 10 0 0 1 10-10z';
+  function jarSVG({ id, ratio, pace, color, over, idx, showPace }) {
+    const top = 30, h = 92, bottom = 122;
+    const fillH = Math.min(Math.max(ratio, 0), 1) * h;
+    const paceY = bottom - h * pace;
+    const liquid = fillH > 0
+      ? `<g class="liquid" style="--i:${idx}"><rect x="0" y="${bottom - fillH}" width="100" height="${fillH}" fill="${color}"/><rect x="0" y="${bottom - fillH}" width="100" height="3" fill="#fff" fill-opacity=".3"/></g>`
+      : '';
+    const ridges = [24, 34, 44, 54, 64, 74].map(x => `<path d="M${x} 14v11" stroke="#3D4B58" stroke-opacity=".55" stroke-width="1.3"/>`).join('');
+    const lid = `<g class="lid${over ? ' off' : ''}" style="--i:${idx}"><rect x="12" y="12" width="76" height="15" rx="4" fill="#5E6E7D"/><rect x="12" y="12" width="76" height="5" rx="2.5" fill="#8497A8"/>${ridges}</g>`;
+    const drip = over
+      ? `<path class="drip" style="--i:${idx}" d="M93.5 33c5 1 6.5 6 5.5 12-1 9-1.6 17-1.8 25-.1 4.2-2.6 6.4-5.2 6.4s-3.6-2.3-3.6-5.6c0-10 .5-22 .1-30-.2-4.700 1.600-7.800 5-7.800z" fill="${color}"/>`
+      : '';
+    const notch = showPace
+      ? `<path d="M2 ${paceY.toFixed(1)}h15" stroke="#0E2A47" stroke-width="2.4" stroke-linecap="round"/>`
+      : '';
+    return `<svg class="jar" viewBox="-4 0 108 128" aria-hidden="true" focusable="false">
+      <defs><clipPath id="clip-${id}"><path d="${BODY}"/></clipPath></defs>
+      <g clip-path="url(#clip-${id})">
+        <rect x="0" y="${top}" width="100" height="${h}" fill="#fff" fill-opacity=".4"/>
+        ${liquid}
+        <rect x="14" y="36" width="5" height="62" rx="2.5" fill="#fff" fill-opacity=".6"/>
+        <rect x="23" y="36" width="2" height="30" rx="1" fill="#fff" fill-opacity=".35"/>
+      </g>
+      <path d="${BODY}" fill="none" stroke="#0E2A47" stroke-opacity=".55" stroke-width="1.6"/>
+      ${notch}${drip}${lid}
+    </svg>`;
+  }
+
+  function jarButton(it, idx, ctx) {
+    const isDebt = it.kind === 'debt';
+    const ratio = isDebt ? it.paid / it.total : it.s / it.b;
+    const st = isDebt ? 'debt' : statusOf(ratio);
+    const color = isDebt ? 'var(--teal)' : COLOR[st];
+    const over = !isDebt && ratio > 1;
+    let pill, nums, aria;
+    if (isDebt) {
+      pill = `${money0(it.total - it.paid)} to go`;
+      nums = `${money0(it.paid)}<small> of ${money0(it.total)}</small>`;
+      aria = `${it.n}: ${money(it.paid)} paid of ${money(it.total)}, ${money(it.total - it.paid)} to go`;
+    } else {
+      const left = r2(it.b - it.s);
+      pill = st === 'over' ? `${money(it.s - it.b)} over` : st === 'none' ? 'Untouched' : left < .005 ? 'Fully used' : `${money(left)} left`;
+      nums = `${money0(it.s)}<small> of ${money0(it.b)}</small>`;
+      aria = `${it.n}: ${money(it.s)} of ${money(it.b)}, ${pill.toLowerCase()}`;
+    }
+    const tilt = ((idx * 37) % 5 - 2) * .45;
+    const label = it.e ? `<span class="emoji" aria-hidden="true">${it.e}</span>${esc(it.n)}` : esc(it.n);
+    return `<button class="jar-btn" data-id="${it.id}" aria-pressed="${state.open === it.id}" aria-label="${esc(aria)}">
+      ${jarSVG({ id: it.id, ratio, pace: ctx.pace, color, over, idx, showPace: !isDebt && !ctx.month.closed })}
+      <span class="tape" style="--tilt:${tilt}deg">${label}</span>
+      <span class="nums">${nums}</span>
+      <span class="pill ${st}">${pill}</span>
+    </button>`;
+  }
+
+  /* ---------- detail note ---------- */
+  function detailHTML(it, ctx) {
+    const close = `<button class="close" data-act="close" aria-label="Close details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    if (it.kind === 'debt') {
+      const rem = it.total - it.paid, months = Math.ceil(rem / it.monthly);
+      return `<section class="detail" id="detail" aria-live="polite">
+        <div class="detail-head"><h2>${esc(it.n)}</h2>${close}</div>
+        <p class="line"><b>${money(it.paid)}</b> paid of ${money(it.total)}. ${money(rem)} to go.</p>
+        <p class="line soft">At ${money(it.monthly)} a month, that is about ${months} more months.</p>
+      </section>`;
+    }
+    const r = it.s / it.b;
+    const left = r2(it.b - it.s);
+    let l1 = `<b>${money(it.s)}</b> spent of ${money(it.b)}. `;
+    l1 += r > 1 ? `<b>${money(it.s - it.b)}</b> over.` : it.s === 0 ? 'Nothing logged yet.' : left < .005 ? 'Fully used.' : `${money(left)} left.`;
+    let l2 = '';
+    if (!ctx.month.closed && !it.excluded) {
+      const expect = it.b * ctx.pace;
+      l2 = `<p class="line soft">By day ${ctx.month.day} of ${ctx.month.days}, an even pace would be about ${money0(expect)}. We are ${it.s > expect ? 'ahead of' : 'under'} that.</p>`;
+    }
+    const tx = [...it.tx].sort((a, b) => b[0] - a[0]);
+    const mon = ctx.month.label.split(' ')[0].slice(0, 3);
+    const txHTML = tx.length
+      ? `<p class="tx-title">Latest entries</p><ul class="tx">${tx.map(([d, n, a]) => `<li><span class="d">${mon} ${d}</span><span>${esc(n)}</span><span class="a">${money(a)}</span></li>`).join('')}</ul>`
+      : `<p class="tx-title">Latest entries</p><p class="line soft">Nothing logged in ${ctx.month.label.split(' ')[0]} yet.</p>`;
+    return `<section class="detail" id="detail" aria-live="polite">
+      <div class="detail-head"><h2>${it.e} ${esc(it.n)}</h2>${close}</div>
+      <p class="line">${l1}</p>${l2}
+      <div class="detail-grid">
+        <div class="adjust">
+          <span class="lab" id="budgetLab">Monthly budget</span>
+          <div class="row" role="group" aria-labelledby="budgetLab">
+            <button class="btn" data-act="dec" aria-label="Lower budget by $25"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+            <span class="val" aria-live="polite">${money0(it.b)}</span>
+            <button class="btn" data-act="inc" aria-label="Raise budget by $25"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+          </div>
+          <p class="help">Changes in steps of $25.</p>
+        </div>
+        <div>${txHTML}</div>
+      </div>
+    </section>`;
+  }
+
+  /* ---------- shelves ---------- */
+  function colsNow() { return innerWidth >= 1100 ? 7 : innerWidth >= 720 ? 5 : 3; }
+  function shelfRows(items, startIdx, ctx, cols) {
+    let out = '';
+    for (let i = 0; i < items.length; i += cols) {
+      const chunk = items.slice(i, i + cols);
+      const openIt = chunk.find(it => it.id === state.open);
+      out += `<div class="shelf"><div class="shelf-items" style="--cols:${cols}"><div class="board"></div>${chunk.map((it, k) => jarButton(it, startIdx + i + k, ctx)).join('')}</div>${openIt ? detailHTML(openIt, ctx) : ''}</div>`;
+    }
+    return out;
+  }
+
+  /* ---------- whole page ---------- */
+  function render(animate) {
+    const month = MONTHS[state.mi];
+    const ctx = { month, pace: month.closed ? 1 : month.day / month.days };
+    const { cats, cards } = rowsFor(state.mi);
+    $('app').classList.toggle('anim', animate);
+    $('monthLabel').textContent = month.label;
+    $('prev').disabled = state.mi === 0;
+    $('next').disabled = state.mi === MONTHS.length - 1;
+
+    const spent = r2(cats.reduce((t, c) => t + c.s, 0));
+    const budget = cats.reduce((t, c) => t + c.b, 0);
+    const net = r2(INCOME - spent);
+    const overs = cats.filter(c => c.s > c.b).map(c => c.n);
+    const closeOnes = cats.filter(c => c.s <= c.b && c.s / c.b > .85).map(c => c.n);
+    const ratio = spent / budget;
+    const mName = month.label.split(' ')[0];
+
+    let head;
+    if (month.closed) head = net < 0 || ratio > 1 ? `${mName} closed over budget.` : `${mName} closed in the green.`;
+    else if (net < 0) head = 'We are spending more than we earn.';
+    else if (overs.length >= 3) head = 'Several jars are past the lid.';
+    else if (ratio <= ctx.pace + .02) head = 'We’re OK this month.';
+    else head = 'Running a little hot.';
+    $('headline').textContent = head;
+
+    const left = r2(budget - spent);
+    let sub = `<strong>${money(left)}</strong> of the ${money0(budget)} budget ${month.closed ? 'was left over' : 'is still on the shelf'}${month.closed ? '' : ` with ${month.days - month.day} days to go`}.`;
+    if (overs.length) sub += ` ${list(overs)} ${overs.length > 1 ? 'are' : 'is'} over.`;
+    if (closeOnes.length) sub += ` ${list(closeOnes)} ${closeOnes.length > 1 ? 'are' : 'is'} close.`;
+    $('sub').innerHTML = sub;
+
+    /* tape measure: whole length = income */
+    const pct = Math.min(100, spent / INCOME * 100);
+    let ticks = '';
+    for (let i = 0; i < INCOME / 100; i++) {
+      const left = i * 100 / INCOME * 100, on = left <= pct, major = i % 10 === 0;
+      ticks += `<i class="tick${major ? ' major' : ''}${on ? ' on' : ''}" style="left:${left}%"></i>`;
+      if (major && i > 0) ticks += `<span class="tick-label${on ? ' on' : ''}" style="left:${left}%">${i / 10}k</span>`;
+    }
+    $('measure').innerHTML = `<div class="rule" role="img" aria-label="${money(spent)} spent out of ${money(INCOME)} income"><div class="spent" style="width:${pct}%"></div>${ticks}</div>
+      <figcaption><span><b>${money(spent)}</b> spent</span><span><b>${net >= 0 ? money(net) : '−' + money(-net)}</b> ${net >= 0 ? (month.closed ? 'saved' : 'saved so far') : 'short'}</span><span><b>${money(INCOME)}</b> earned</span></figcaption>`;
+
+    /* upcoming note (bills in the first week of next month) */
+    const nm = (month.m + 1) % 12, ny = month.y + (month.m + 1 > 11 ? 1 : 0);
+    const up = UPCOMING.map(u => ({ ...u, wd: new Date(ny, nm, u.day).toLocaleDateString('en-US', { weekday: 'short' }) }));
+    const upTotal = up.reduce((t, u) => t + u.a, 0);
+    $('upcoming').innerHTML = `<h2>Coming up</h2><ul>${up.map(u => `<li><span class="d">${u.wd} ${u.day}</span><span>${esc(u.n)}</span><span class="a">${money(u.a)}</span></li>`).join('')}</ul><p class="total">${money(upTotal)} due early ${new Date(ny, nm, 1).toLocaleDateString('en-US', { month: 'long' })}</p>`;
+
+    const cols = colsNow();
+    document.documentElement.style.setProperty('--cols', cols);
+    $('shelves').innerHTML = shelfRows(cats, 0, ctx, cols);
+
+    const lowerItems = [cards, ...DEBTS.map(d => ({ ...d, kind: 'debt' }))];
+    $('lower').innerHTML = `<h2 id="lowerTitle">Card bills and loans</h2><p class="hint">Kept apart from the monthly totals above.</p>` + shelfRows(lowerItems, cats.length, ctx, cols);
+  }
+
+  /* ---------- events ---------- */
+  let restore = null;
+  document.addEventListener('click', e => {
+    const jar = e.target.closest('.jar-btn');
+    const actEl = e.target.closest('[data-act]');
+    if (jar) {
+      const id = jar.dataset.id;
+      state.open = state.open === id ? null : id;
+      restore = state.open ? '#detail' : `.jar-btn[data-id="${id}"]`;
+      render(false);
+    } else if (actEl) {
+      const act = actEl.dataset.act;
+      if (act === 'close') { const id = state.open; state.open = null; restore = `.jar-btn[data-id="${id}"]`; render(false); }
+      else if (act === 'inc' || act === 'dec') {
+        const key = state.mi + ':' + state.open;
+        const cur = rowsFor(state.mi);
+        const it = state.open === 'cards' ? cur.cards : cur.cats.find(c => c.id === state.open);
+        state.overrides[key] = Math.max(25, it.b + (act === 'inc' ? 25 : -25));
+        restore = `[data-act="${act}"]`;
+        render(false);
+      }
+    }
+    if (restore) { const el = document.querySelector(restore); if (el) el.focus({ preventScroll: restore === '#detail' ? false : true }); restore = null; }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && state.open) { const id = state.open; state.open = null; render(false); document.querySelector(`.jar-btn[data-id="${id}"]`)?.focus(); }
+  });
+  $('prev').addEventListener('click', () => { if (state.mi > 0) { state.mi--; state.open = null; render(true); } });
+  $('next').addEventListener('click', () => { if (state.mi < MONTHS.length - 1) { state.mi++; state.open = null; render(true); } });
+  let lastCols = colsNow();
+  addEventListener('resize', () => { const c = colsNow(); if (c !== lastCols) { lastCols = c; render(false); } });
+
+  render(true);
+})();
+</script>
+</body>
+</html>

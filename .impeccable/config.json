@@ -8,6 +8,24 @@
         "value": "arial",
         "createdAt": "2026-09-08T19:49:50.873Z",
         "reason": "Private password-gated household finance dashboard, not an editorial/marketing surface; system-font fallback stack is intentional and appropriate, not an AI-generated-design smell."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "design-samples/abacus-board/index.html"
+        ],
+        "createdAt": "2026-10-29T01:12:44.684Z",
+        "reason": "Claude: line 140 is the brass end posts of an abacus wire (.wire::after), not a card accent border"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "design-samples/clean-ledger/index.html"
+        ],
+        "createdAt": "2026-10-29T01:20:37.982Z",
+        "reason": "Claude: Operate-mode data UI where a workhorse face with tabular figures is the brief's standing exit (clean and familiar); user chose that direction, not the font specifically"
       }
     ]
   }

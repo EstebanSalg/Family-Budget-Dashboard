@@ -1,28 +1,37 @@
 import type { Debt } from '@/lib/sheets/debts';
 import type { Transaction } from '@/lib/sheets/expenseLog';
+import { ProgressBar } from './overview/ProgressBar';
+import { PANEL } from './ui';
+
+const money = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 export function DebtCard({ debt, payments, payoffDate }: { debt: Debt; payments: Transaction[]; payoffDate: Date | null }) {
   const paidSoFar = debt.principal - debt.currentBalance;
-  const percentPaid = debt.principal > 0 ? (paidSoFar / debt.principal) * 100 : 0;
+  const ratio = debt.principal > 0 ? Math.max(paidSoFar, 0) / debt.principal : 0;
 
   return (
-    <div className="rounded-lg bg-slate-900 p-4">
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-lg font-semibold">{debt.name}</h3>
-        <span className="text-sm text-slate-400">${debt.currentBalance.toFixed(2)} remaining</span>
+    <section className={PANEL}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-lg font-semibold">{debt.name}</h2>
+        <span className="text-sm text-panel-inkMuted">
+          <b className="text-lg font-bold text-panel-ink">{money(debt.currentBalance)}</b> remaining
+        </span>
       </div>
-      <div className="mt-2 h-2 rounded bg-slate-800">
-        <div className="h-2 rounded bg-blue-500" style={{ width: `${Math.min(100, percentPaid).toFixed(0)}%` }} />
-      </div>
-      <p className="mt-2 text-xs text-slate-400">
-        ${debt.payment.toFixed(2)} / {debt.frequency}
-        {payoffDate && ` · est. payoff ${payoffDate.toLocaleDateString()}`}
+      <ProgressBar ratio={ratio} status="debt" className="mt-3.5" />
+      <p className="mt-2.5 text-[13.5px] text-panel-inkMuted">
+        {Math.round(ratio * 100)}% paid {'·'} {money(debt.payment)} {debt.frequency.toLowerCase()}
+        {payoffDate && ` · est. payoff ${payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
       </p>
-      <ul className="mt-3 space-y-1 text-xs text-slate-500">
-        {payments.slice(0, 5).map((p, i) => (
-          <li key={i}>{p.date.toLocaleDateString()} — ${p.amount.toFixed(2)}</li>
-        ))}
-      </ul>
-    </div>
+      {payments.length > 0 && (
+        <ul className="mt-4 border-t border-panel-line pt-1">
+          {payments.slice(0, 5).map((p, i) => (
+            <li key={i} className="flex justify-between border-t border-panel-lineSoft py-2 text-sm first:border-t-0">
+              <span className="text-panel-inkMuted">{p.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</span>
+              <span className="font-semibold">{money(p.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

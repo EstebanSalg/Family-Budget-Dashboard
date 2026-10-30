@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BTN_PRIMARY, ERROR_TEXT, INPUT, LABEL, PANEL } from './ui';
 
 export function AddCategoryForm() {
   const [emoji, setEmoji] = useState('📁');
@@ -28,43 +29,23 @@ export function AddCategoryForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mb-1 flex flex-wrap items-end gap-3 rounded-lg border border-panel-line bg-panel-surface p-4"
-    >
-      <div>
-        <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-panel-inkMuted">Emoji</label>
-        <input
-          value={emoji}
-          onChange={(e) => setEmoji(e.target.value)}
-          className="mt-1 w-14 rounded border border-panel-line bg-panel-surface2 px-2 py-1.5 text-center text-panel-ink"
-        />
-      </div>
-      <div className="flex-1">
-        <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-panel-inkMuted">Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="mt-1 w-full rounded border border-panel-line bg-panel-surface2 px-2 py-1.5 text-panel-ink"
-        />
-      </div>
-      <div>
-        <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-panel-inkMuted">Starting Budget</label>
-        <input
-          type="number"
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-          className="mt-1 w-32 rounded border border-panel-line bg-panel-surface2 px-2 py-1.5 font-mono text-panel-ink"
-        />
-      </div>
-      <button
-        type="submit"
-        className="rounded bg-brass px-4 py-1.5 font-mono text-[13px] font-semibold text-panel-bg transition-opacity hover:opacity-90"
-      >
+    <form onSubmit={handleSubmit} className={`${PANEL} flex flex-wrap items-end gap-3 !p-4 md:!p-5`}>
+      <label className={LABEL}>
+        Emoji
+        <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className={`${INPUT} w-16 text-center`} />
+      </label>
+      <label className={`${LABEL} min-w-[160px] flex-1`}>
+        Name
+        <input value={name} onChange={(e) => setName(e.target.value)} required className={`${INPUT} w-full`} />
+      </label>
+      <label className={LABEL}>
+        Starting budget
+        <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} className={`${INPUT} w-32`} />
+      </label>
+      <button type="submit" className={BTN_PRIMARY}>
         + Add category
       </button>
-      {error && <span className="font-mono text-sm text-[#EE8478]">{error}</span>}
+      {error && <span role="alert" className={ERROR_TEXT}>{error}</span>}
     </form>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BTN_PRIMARY, INPUT, PANEL } from './ui';
 
 export function RecurringForm({ categories }: { categories: string[] }) {
   const [form, setForm] = useState({
@@ -24,22 +25,22 @@ export function RecurringForm({ categories }: { categories: string[] }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-slate-900 p-4 md:grid-cols-5">
-      <input placeholder="Name" value={form.name} onChange={(e) => update('name', e.target.value)} required className="rounded border border-slate-700 bg-slate-800 px-2 py-1" />
-      <select value={form.category} onChange={(e) => update('category', e.target.value)} className="rounded border border-slate-700 bg-slate-800 px-2 py-1">
+    <form onSubmit={handleSubmit} className={`${PANEL} grid grid-cols-2 gap-3 !p-4 md:grid-cols-5 md:!p-5`}>
+      <input placeholder="Name" aria-label="Name" value={form.name} onChange={(e) => update('name', e.target.value)} required className={INPUT} />
+      <select aria-label="Category" value={form.category} onChange={(e) => update('category', e.target.value)} className={INPUT}>
         {categories.map((c) => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>
-      <input placeholder="Expected Amount" type="number" value={form.expectedAmount} onChange={(e) => update('expectedAmount', e.target.value)} className="rounded border border-slate-700 bg-slate-800 px-2 py-1" />
-      <select value={form.frequency} onChange={(e) => update('frequency', e.target.value)} className="rounded border border-slate-700 bg-slate-800 px-2 py-1">
+      <input placeholder="Expected amount" aria-label="Expected amount" type="number" value={form.expectedAmount} onChange={(e) => update('expectedAmount', e.target.value)} className={INPUT} />
+      <select aria-label="Frequency" value={form.frequency} onChange={(e) => update('frequency', e.target.value)} className={INPUT}>
         <option>Weekly</option>
         <option>Biweekly</option>
         <option>Monthly</option>
         <option>Annually</option>
       </select>
-      <input placeholder="Next Due Date" type="date" value={form.nextDueDate} onChange={(e) => update('nextDueDate', e.target.value)} className="rounded border border-slate-700 bg-slate-800 px-2 py-1" />
-      <button type="submit" className="col-span-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium md:col-span-5">+ Add recurring expense</button>
+      <input aria-label="Next due date" type="date" value={form.nextDueDate} onChange={(e) => update('nextDueDate', e.target.value)} className={INPUT} />
+      <button type="submit" className={`${BTN_PRIMARY} col-span-2 md:col-span-5`}>+ Add recurring expense</button>
     </form>
   );
 }

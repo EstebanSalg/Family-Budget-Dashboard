@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Transaction } from '@/lib/sheets/expenseLog';
+import { BTN_PRIMARY, INPUT, PANEL } from './ui';
 
 export function ConfirmationQueue({ pending }: { pending: Transaction[] }) {
   const router = useRouter();
@@ -19,22 +20,25 @@ export function ConfirmationQueue({ pending }: { pending: Transaction[] }) {
     router.refresh();
   }
 
-  if (pending.length === 0) return <p className="text-slate-400">Nothing pending confirmation.</p>;
+  if (pending.length === 0) {
+    return <p className="text-sm text-panel-inkMuted">Nothing pending confirmation.</p>;
+  }
 
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {pending.map((t) => {
         const key = t.date.toISOString().slice(0, 10) + t.description;
         return (
-          <li key={key} className="flex items-center gap-3 rounded bg-slate-900 p-3">
-            <span className="flex-1">{t.description}</span>
+          <li key={key} className={`${PANEL} flex flex-wrap items-center gap-3 !p-3.5`}>
+            <span className="min-w-[140px] flex-1 font-medium">{t.description}</span>
             <input
               type="number"
               defaultValue={t.amount}
+              aria-label={`Amount for ${t.description}`}
               onChange={(e) => setAmounts((a) => ({ ...a, [key]: e.target.value }))}
-              className="w-28 rounded border border-slate-700 bg-slate-800 px-2 py-1"
+              className={`${INPUT} w-28`}
             />
-            <button onClick={() => confirm(t)} className="rounded bg-blue-600 px-3 py-1 text-sm">Confirm</button>
+            <button type="button" onClick={() => confirm(t)} className={BTN_PRIMARY}>Confirm</button>
           </li>
         );
       })}

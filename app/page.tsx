@@ -1,69 +1,110 @@
 import { getCategoryBudgets, getSelectedMonth } from '@/lib/sheets/budgets';
-import { OverviewTiles } from './components/OverviewTiles';
-import { CategoryDonut } from './components/CategoryDonut';
-import { BudgetVsSpentChart } from './components/BudgetVsSpentChart';
-import { MonthSelector } from './components/MonthSelector';
-import { IncomeVsExpensesBar } from './components/IncomeVsExpensesBar';
+import { getTransactions } from '@/lib/sheets/expenseLog';
+import { getRecurringItems } from '@/lib/sheets/recurring';
+import { estimatePayoffDate, getDebts } from '@/lib/sheets/debts';
+import { getLatestEntriesByCategory, getSixMonthTotals } from '@/lib/sheets/monthlyTotals';
+import { MONTH_LABELS, MONTH_NAMES } from '@/lib/sheets/months';
+import { OverviewDashboard } from './components/overview/OverviewDashboard';
+import type { CategoryView, OverviewData } from './components/overview/types';
 
 // force-dynamic (not ISR): this page reads live Google Sheets data, which
 // isn't reachable during `next build` inside the Docker image (Fly secrets
 // are runtime-only, not build-time) -- always render per-request instead.
 export const dynamic = 'force-dynamic';
 
+const INCOME_CATEGORY = '💰 Income';
+// Credit Cards keeps its own budget/spent row (so it's still trackable on its
+// own) but is excluded from the household's overall totals: a card bill
+// payment is money already counted once as an itemized purchase (Amex, etc.)
+// under its real category. Including it too would double-count whatever was
+// charged to the card.
+const CARDS_CATEGORY = '💳 Credit Cards';
+const UPCOMING_WINDOW_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The recurring and loan tabs feed side panels only; if either can't be read,
+// the budget itself should still load.
+async function orEmpty<T>(label: string, load: Promise<T[]>): Promise<T[]> {
+  try {
+    return await load;
+  } catch (err) {
+    console.error(`Overview: could not load ${label}`, err);
+    return [];
+  }
+}
+
 export default async function OverviewPage() {
-  const [budgets, selectedMonth] = await Promise.all([getCategoryBudgets(), getSelectedMonth()]);
+  const [budgets, selectedMonth, transactions, recurring, debts] = await Promise.all([
+    getCategoryBudgets(),
+    getSelectedMonth(),
+    getTransactions(),
+    orEmpty('recurring items', getRecurringItems()),
+    orEmpty('loans', getDebts()),
+  ]);
 
-  const expenseRows = budgets.filter((b) => b.category !== '💰 Income');
-  const incomeRow = budgets.find((b) => b.category === '💰 Income');
+  // The sheet's month selector holds a month name only, not a year. Treat it as
+  // the most recent occurrence of that month (so selecting a later month than
+  // today's means last year).
+  const now = new Date();
+  const foundIndex = (MONTH_NAMES as readonly string[]).indexOf(selectedMonth);
+  const monthIndex = foundIndex === -1 ? now.getMonth() : foundIndex;
+  const year = monthIndex > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear();
+  const closed = monthIndex !== now.getMonth();
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+  const monthShort = MONTH_NAMES[monthIndex];
+  const monthLong = MONTH_LABELS[monthShort];
 
-  const totalSpent = expenseRows.reduce((sum, b) => sum + b.spent, 0);
-  const totalBudget = expenseRows.reduce((sum, b) => sum + b.budget, 0);
-  const income = incomeRow?.spent ?? 0;
-  const netSavings = income - totalSpent;
-  const overBudgetRows = expenseRows.filter((b) => b.spent > b.budget);
+  const entries = getLatestEntriesByCategory(transactions, monthKey, 5);
+  const toView = (b: { category: string; budget: number; spent: number }): CategoryView => ({
+    category: b.category,
+    budget: b.budget,
+    spent: b.spent,
+    entries: entries[b.category] ?? [],
+  });
 
-  return (
-    <main className="min-h-screen space-y-5 bg-panel-bg p-6 text-panel-ink">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight">Household Dashboard</h1>
-          <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-panel-inkMuted">
-            Auto-logged from WhatsApp + bank alerts
-          </p>
-        </div>
-        <MonthSelector currentMonth={selectedMonth} />
-      </div>
+  const trend = getSixMonthTotals(transactions, new Date(Date.UTC(year, monthIndex, 1)), [INCOME_CATEGORY, CARDS_CATEGORY]).map((point, i, all) => ({
+    label: MONTH_NAMES[Number(point.month.slice(5)) - 1],
+    total: point.total,
+    selected: i === all.length - 1,
+  }));
 
-      <OverviewTiles
-        totalSpent={totalSpent}
-        totalBudget={totalBudget}
-        income={income}
-        netSavings={netSavings}
-        overBudgetCount={overBudgetRows.length}
-        categoryCount={expenseRows.length}
-        overBudgetCategories={overBudgetRows.map((b) => b.category)}
-      />
+  const dateFmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' });
+  const startOfToday = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcoming = recurring
+    .filter((r) => r.nextDueDate.getTime() >= startOfToday && r.nextDueDate.getTime() <= startOfToday + UPCOMING_WINDOW_DAYS * DAY_MS)
+    .sort((a, b) => a.nextDueDate.getTime() - b.nextDueDate.getTime())
+    .map((r) => ({ name: r.name, amount: r.expectedAmount, dayLabel: `${dateFmt(r.nextDueDate, { weekday: 'short' })} ${r.nextDueDate.getUTCDate()}` }));
 
-      <IncomeVsExpensesBar income={income} expenses={totalSpent} />
+  const loans = debts.map((d) => {
+    const payoff = estimatePayoffDate(d);
+    return {
+      name: d.name,
+      principal: d.principal,
+      balance: d.currentBalance,
+      payment: d.payment,
+      frequency: d.frequency,
+      payoffLabel: payoff ? dateFmt(payoff, { month: 'short', year: 'numeric' }) : null,
+    };
+  });
 
-      <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-[1fr_1.35fr]">
-        <div className="rounded-lg border border-panel-line bg-panel-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.4),0_14px_30px_-16px_rgba(0,0,0,.65)]">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="font-mono text-[12.5px] uppercase tracking-[0.08em] text-panel-inkMuted">Where It Went</h2>
-            <span className="font-mono text-xs text-panel-inkMuted">${totalSpent.toFixed(2)}</span>
-          </div>
-          <CategoryDonut data={expenseRows.map((b) => ({ category: b.category, spent: b.spent }))} />
-        </div>
-        <div className="rounded-lg border border-panel-line bg-panel-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.4),0_14px_30px_-16px_rgba(0,0,0,.65)]">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="font-mono text-[12.5px] uppercase tracking-[0.08em] text-panel-inkMuted">Budget vs. Spent</h2>
-            <span className="font-mono text-xs text-panel-inkMuted">brass tick = budget line</span>
-          </div>
-          <BudgetVsSpentChart
-            data={expenseRows.map((b) => ({ category: b.category, budget: b.budget, spent: b.spent, status: b.status }))}
-          />
-        </div>
-      </div>
-    </main>
-  );
+  const cardsRow = budgets.find((b) => b.category === CARDS_CATEGORY);
+  const data: OverviewData = {
+    monthName: selectedMonth,
+    monthLabel: `${monthLong} ${year}`,
+    monthLong,
+    entryMonthShort: monthShort,
+    daysInMonth,
+    dayOfMonth: closed ? daysInMonth : now.getDate(),
+    closed,
+    income: budgets.find((b) => b.category === INCOME_CATEGORY)?.spent ?? 0,
+    categories: budgets.filter((b) => b.category !== INCOME_CATEGORY && b.category !== CARDS_CATEGORY).map(toView),
+    cards: cardsRow ? toView(cardsRow) : null,
+    trend,
+    upcoming,
+    upcomingWindowDays: UPCOMING_WINDOW_DAYS,
+    loans,
+  };
+
+  return <OverviewDashboard data={data} />;
 }

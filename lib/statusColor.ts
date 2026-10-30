@@ -8,12 +8,27 @@
 // agrees with a sheet-status-based color (getStatusColor) for the same
 // underlying ratio.
 
+// Bright "glow" values for the navy theme (see the --* tokens in
+// app/globals.css). The Overview page's own chips and bars use the matching CSS
+// variables instead of these hexes.
 export const STATUS_COLORS = {
-  red: '#f87171',
-  amber: '#fbbf24',
-  green: '#4ade80',
-  neutral: '#64748b',
+  red: '#F43F5E',
+  amber: '#F59E0B',
+  green: '#10B981',
+  neutral: '#94A3B8',
 } as const;
+
+export type BudgetStatus = 'over' | 'warn' | 'ok' | 'none';
+
+// Same thresholds as the sheet's Status formula, as a discriminator for UI that
+// needs to recompute status after a budget is edited (the sheet's Status cell
+// would be stale until the next reload).
+export function getRatioStatus(ratio: number): BudgetStatus {
+  if (ratio > 1) return 'over';
+  if (ratio > 0.85) return 'warn';
+  if (ratio > 0) return 'ok';
+  return 'none';
+}
 
 export function getStatusColor(status: string): string {
   if (status.includes('🔴')) return STATUS_COLORS.red;

@@ -3,10 +3,19 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { CategoryBudget } from '@/lib/sheets/budgets';
-import { getStatusColor, getStatusLabel } from '@/lib/statusColor';
+import { getRatioStatus, STATUS_COLORS } from '@/lib/statusColor';
+import { CHIP_CLASS, DOT_CLASS, STATUS_LABEL, ratioOf } from './overview/format';
+import { ProgressBar } from './overview/ProgressBar';
 import { MiniSparkline } from './MiniSparkline';
 
 type Trend = { month: string; total: number }[];
+
+const SPARK_COLOR = {
+  over: STATUS_COLORS.red,
+  warn: STATUS_COLORS.amber,
+  ok: STATUS_COLORS.green,
+  none: STATUS_COLORS.neutral,
+} as const;
 
 export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend }) {
   const [budget, setBudget] = useState(row.budget);
@@ -28,35 +37,37 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
       if (!res.ok) throw new Error('save failed');
     } catch {
       setBudget(previous);
-      setError('Could not save — reverted.');
+      setError('Could not save, so it was reverted.');
     } finally {
       setSaving(false);
       setEditing(false);
     }
   }
 
-  const statusColor = getStatusColor(row.status);
-  const statusLabel = getStatusLabel(row.status);
-  // The track always represents 0-100% of budget in the first TRACK_SPLIT% of
-  // its own width, leaving the rest as a contained "over budget" zone -- so the
-  // hatched overflow can never bleed past the row's own width (no more horizontal
-  // page scroll when a category is far over budget).
-  const TRACK_SPLIT = 82;
-  const fillPct = (Math.min(row.percentUsed, 100) / 100) * TRACK_SPLIT;
-  const overflowPct = (Math.min(Math.max(row.percentUsed - 100, 0), 100) / 100) * (100 - TRACK_SPLIT);
+  // Recomputed from the (possibly just-edited) budget, using the sheet's own
+  // Status thresholds, so the chip and bar never lag behind an edit.
+  const ratio = ratioOf(row.spent, budget);
+  const status = getRatioStatus(ratio);
+  const pct = budget > 0 ? `${Math.round(ratio * 100)}%` : '—';
 
   return (
-    <div className="border-b border-panel-line py-3 last:border-none">
+    <div className="border-b border-panel-lineSoft py-3.5 last:border-none">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <Link
-          href={`/categories/${encodeURIComponent(row.category)}`}
-          className="flex items-center gap-2 font-semibold text-panel-ink transition-colors hover:text-brass"
-        >
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: statusColor }} />
-          {row.category}
-        </Link>
-        <div className="flex items-center gap-5 font-mono text-[13px]">
-          <span className="w-20 text-right text-panel-ink">${row.spent.toFixed(2)}</span>
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 sm:flex-none sm:justify-start">
+          <Link
+            href={`/categories/${encodeURIComponent(row.category)}`}
+            className="flex items-center gap-2.5 font-semibold text-panel-ink transition-colors hover:text-accent"
+          >
+            <span className={`h-2 w-2 shrink-0 rounded-full ${status === 'none' ? 'bg-panel-faint' : DOT_CLASS[status]}`} />
+            {row.category}
+          </Link>
+          <span className={`inline-flex h-6 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12.5px] font-semibold before:h-1.5 before:w-1.5 before:rounded-full before:bg-current sm:hidden ${CHIP_CLASS[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 text-sm sm:w-auto">
+          <span className="font-semibold sm:w-20 sm:text-right">${row.spent.toFixed(2)}</span>
+          <span className="-mx-1.5 text-panel-faint sm:hidden">of</span>
           {editing ? (
             <input
               autoFocus
@@ -64,47 +75,31 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
               defaultValue={budget}
               disabled={saving}
               onBlur={(e) => save(Number(e.target.value))}
-              className="w-24 rounded border border-panel-line bg-panel-surface2 px-2 py-1 text-panel-ink"
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              aria-label={`Monthly budget for ${row.category}`}
+              className="w-24 rounded-lg border border-panel-line bg-panel-surface2 px-2 py-1 text-panel-ink focus:border-accent-line focus:outline-none focus:ring-2 focus:ring-accent-soft"
             />
           ) : (
             <button
+              type="button"
               onClick={() => setEditing(true)}
-              className="w-24 text-right text-panel-inkMuted underline decoration-dotted decoration-panel-line underline-offset-2 hover:text-brass"
+              aria-label={`Edit budget for ${row.category}`}
+              className="text-panel-inkMuted underline decoration-panel-faint decoration-dotted underline-offset-4 transition-colors hover:text-accent sm:w-24 sm:text-right"
             >
               ${budget.toFixed(2)}
             </button>
           )}
-          <span className="w-14 whitespace-nowrap text-right text-panel-inkMuted">{row.percentUsed.toFixed(0)}%</span>
-          <span
-            className="w-[70px] rounded-full py-0.5 text-center text-[9.5px] font-bold uppercase tracking-[0.05em]"
-            style={{ color: statusColor, backgroundColor: `${statusColor}22` }}
-          >
-            {statusLabel}
+          <span className="whitespace-nowrap text-panel-inkMuted sm:w-12 sm:text-right">{pct}</span>
+          <span className={`hidden h-6 w-[88px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-[12.5px] font-semibold before:h-1.5 before:w-1.5 before:rounded-full before:bg-current sm:inline-flex ${CHIP_CLASS[status]}`}>
+            {STATUS_LABEL[status]}
           </span>
-          <MiniSparkline data={trend} color={statusColor} />
-          {error && <span className="text-[#EE8478]">{error}</span>}
+          <span className="hidden sm:block">
+            <MiniSparkline data={trend} color={SPARK_COLOR[status]} />
+          </span>
+          {error && <span role="alert" className="text-status-over-ink">{error}</span>}
         </div>
       </div>
-      <div className="relative mt-2.5 h-1.5 w-full">
-        <div className="absolute inset-0 overflow-hidden rounded-full">
-          <div
-            className="absolute inset-0 bg-panel-surface2"
-            style={{ backgroundImage: 'repeating-linear-gradient(90deg, #22303F 0 1px, transparent 1px 12.5%)' }}
-          />
-          <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${fillPct}%`, backgroundColor: statusColor }} />
-          {overflowPct > 0 && (
-            <div
-              className="absolute inset-y-0 rounded-r-full"
-              style={{
-                left: `${TRACK_SPLIT}%`,
-                width: `${overflowPct}%`,
-                backgroundImage: 'repeating-linear-gradient(45deg, #EE8478 0 3px, transparent 3px 6px)',
-              }}
-            />
-          )}
-        </div>
-        <div className="absolute -inset-y-1 w-0.5 bg-brass" style={{ left: `${TRACK_SPLIT}%` }} />
-      </div>
+      <ProgressBar ratio={ratio} status={status} size="sm" className="mt-3" />
     </div>
   );
 }

@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bead Board — Household Budget Sample</title>
+<meta name="description" content="An alternative family budget dashboard: every category is a wire of ten beads, and spending slides them across.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground: #F5DF3B;
+  --ink: #15131C;
+  --ink-soft: #3A3626;
+  --lacquer: #17141F;
+  --lacquer-2: #221E2C;
+  --ivory: #F3EEDD;
+  --ivory-mute: #B8B3C4;
+  --brass-1: #EBCB6E;
+  --brass-2: #94702A;
+  --ok-b: #35C77B;
+  --warn-b: #F6B72C;
+  --over-b: #F2533B;
+  --debt-b: #34C9CF;
+  --idle-b: #E9E3D0;
+  --font-display: 'Bricolage Grotesque', 'Arial Narrow', sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh;
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+  color: var(--ink);
+  background-color: var(--ground);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .08  0 0 0 0 .07  0 0 0 0 .1  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+::selection { background: var(--ink); color: var(--ground); }
+* { scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ground); outline-offset: 2px; box-shadow: 0 0 0 5px var(--ink); border-radius: 10px; }
+.top :focus-visible, .lead :focus-visible { outline-color: var(--ink); box-shadow: none; }
+
+.app { max-width: 1160px; margin: 0 auto; padding: 20px 16px 72px; }
+@media (min-width: 760px) { .app { padding: 30px 32px 88px; } }
+
+/* ---------- top bar ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; letter-spacing: -.01em; }
+.month { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.month .label { min-width: 150px; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+.step {
+  width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer;
+  background: var(--ink); color: var(--ground); border: 0; border-radius: 50%;
+  transition: transform .2s var(--ease-out), opacity .2s;
+}
+.step:hover:not(:disabled) { transform: scale(1.06); }
+.step:active:not(:disabled) { transform: scale(.94); }
+.step:disabled { opacity: .28; cursor: not-allowed; }
+.step svg { width: 18px; height: 18px; }
+.sample { margin: 0; flex-basis: 100%; font-size: 13px; color: var(--ink-soft); }
+@media (min-width: 760px) { .sample { flex-basis: auto; order: 3; } }
+
+/* ---------- verdict ---------- */
+.lead { display: grid; gap: 26px; margin-top: 30px; }
+@media (min-width: 900px) { .lead { grid-template-columns: minmax(0, 1fr) 300px; gap: 56px; margin-top: 44px; align-items: end; } }
+h1 {
+  margin: 0; max-width: 12ch;
+  font-family: var(--font-display); font-weight: 800; font-stretch: 80%;
+  font-size: clamp(3.1rem, 10vw, 6rem); line-height: .92; letter-spacing: -.025em; text-wrap: balance;
+}
+.sub { margin: 18px 0 0; max-width: 54ch; font-size: 1.15rem; line-height: 1.5; text-wrap: pretty; }
+.sub strong { font-weight: 700; }
+
+.upcoming h2 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; letter-spacing: -.005em; }
+.upcoming ul { list-style: none; margin: 0; padding: 0; border-top: 3px solid var(--ink); }
+.upcoming li { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid rgba(21,19,28,.35); font-size: 15px; }
+.upcoming .d { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.upcoming .a { font-variant-numeric: tabular-nums; font-weight: 600; }
+.upcoming .total { margin: 8px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- the board ---------- */
+.hint { margin: 38px 0 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 14.5px; color: var(--ink-soft); list-style: none; padding: 0; }
+.hint li { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 15px; height: 15px; border-radius: 50%; flex: none; box-shadow: inset -2px -2px 3px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.35); }
+
+.board {
+  position: relative; padding: 10px 6px 12px; border-radius: 20px;
+  background: linear-gradient(165deg, var(--lacquer-2), var(--lacquer) 38%);
+  color: var(--ivory);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px rgba(255,255,255,.05), 0 34px 40px -24px rgba(21,19,28,.7), 0 6px 10px rgba(21,19,28,.25);
+}
+@media (min-width: 760px) { .board { padding: 14px 12px 16px; } }
+.board + .board-title { margin-top: 46px; }
+.board-title { margin: 46px 0 4px; font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; letter-spacing: -.01em; }
+.board-note { margin: 0 0 12px; font-size: 15px; color: var(--ink-soft); }
+
+.row { position: relative; }
+.row + .row::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 1px; background: rgba(255,255,255,.07); }
+.row-btn, .row-static {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab fig" "wire wire";
+  gap: 4px 12px; align-items: center; width: 100%; padding: 12px 12px 10px; text-align: left;
+  background: none; border: 0; border-radius: 12px; color: inherit;
+}
+.row-btn { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .2s var(--ease-out); }
+.row-btn:hover { background: rgba(255,255,255,.05); }
+.row-btn[aria-expanded="true"] { background: rgba(255,255,255,.09); }
+@media (min-width: 760px) {
+  .row-btn, .row-static { grid-template-columns: 178px minmax(0, 1fr) 176px; grid-template-areas: "lab wire fig"; gap: 20px; padding: 8px 16px; }
+}
+.lab { grid-area: lab; display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.12rem; letter-spacing: -.005em; line-height: 1.1; }
+.lab .emoji { font-size: 1.35rem; line-height: 1; }
+.lab.master { font-size: 1.35rem; font-weight: 800; }
+.fig { grid-area: fig; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.fig b { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.fig small { font-family: var(--font-body); font-weight: 400; font-size: .76rem; color: var(--ivory-mute); }
+.pill {
+  display: inline-block; padding: 4px 8px 5px; border-radius: 4px;
+  font-size: 12.5px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pill.ok   { background: var(--ok-b);   color: #07251A; }
+.pill.warn { background: var(--warn-b); color: #2D1F00; }
+.pill.over { background: var(--over-b); color: #2B0A04; }
+.pill.debt { background: var(--debt-b); color: #052629; }
+.pill.none { background: transparent; color: var(--ivory-mute); box-shadow: inset 0 0 0 1.5px var(--ivory-mute); }
+
+/* wire + beads */
+.wire { grid-area: wire; position: relative; container-type: inline-size; height: 46px; }
+.row.has-spill .wire { margin-bottom: 8px; }
+.wire.master { height: 66px; }
+.wire::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px;
+  background: linear-gradient(var(--brass-1), var(--brass-2));
+}
+.wire::after {
+  content: ""; position: absolute; inset: 7px 0; pointer-events: none;
+  border-left: 5px solid var(--brass-2); border-right: 5px solid var(--brass-2); border-radius: 3px;
+}
+.beads { position: absolute; inset: 0; --b: min(8.2cqw, 30px); --sl: calc(100cqw - 10px - 10 * var(--b)); }
+.master .beads { --b: min(8.2cqw, 44px); }
+.bead {
+  position: absolute; top: 50%; width: var(--b); height: var(--b); margin-top: calc(var(--b) / -2);
+  left: calc(5px + (9 - var(--k)) * var(--b) + var(--p) * var(--sl));
+  border-radius: 50%; --c: var(--idle-b);
+  background:
+    radial-gradient(circle at 32% 27%, rgba(255,255,255,.85) 0 9%, rgba(255,255,255,0) 30%),
+    radial-gradient(circle at 50% 50%, var(--c), color-mix(in srgb, var(--c) 62%, #000) 100%);
+  box-shadow: 0 3px 4px rgba(0,0,0,.55), inset -2px -3px 5px rgba(0,0,0,.25);
+  transition: left 1s var(--ease-out) calc(var(--row, 0) * 45ms + var(--k) * 28ms);
+}
+.bead.ok   { --c: var(--ok-b); }
+.bead.warn { --c: var(--warn-b); }
+.bead.over { --c: var(--over-b); }
+.bead.debt { --c: var(--debt-b); }
+.pre .bead { --p: 0 !important; }
+.spill {
+  position: absolute; width: calc(var(--b) * .6); height: calc(var(--b) * .6); border-radius: 50%;
+  bottom: -12px; right: calc(10px + var(--i) * var(--b) * .42);
+  transform: translateY(var(--dy)) rotate(var(--rot));
+  background: radial-gradient(circle at 32% 27%, rgba(255,255,255,.8) 0 9%, rgba(255,255,255,0) 30%), radial-gradient(circle, var(--over-b), color-mix(in srgb, var(--over-b) 62%, #000));
+  box-shadow: 0 2px 3px rgba(0,0,0,.55);
+  animation: drop .6s var(--ease-out) both; animation-delay: calc(1.1s + var(--i) * 70ms);
+}
+.pre .spill { animation: none; opacity: 0; }
+@keyframes drop { from { opacity: 0; transform: translateY(-26px) rotate(0); } }
+
+/* ---------- detail ---------- */
+.detail {
+  margin: 2px 8px 10px; padding: 20px 20px 18px; border-radius: 12px;
+  background: var(--ivory); color: var(--ink);
+  animation: slide-in .45s var(--ease-out) both;
+}
+@keyframes slide-in { from { opacity: 0; transform: translateY(-8px); } }
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.detail h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; letter-spacing: -.015em; }
+.close { width: 38px; height: 38px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.close:hover { background: rgba(21,19,28,.09); }
+.close svg { width: 18px; height: 18px; }
+.detail .line { margin: 6px 0 0; max-width: 62ch; font-size: 1.05rem; }
+.detail .line.soft { color: #4B4638; font-size: 15px; margin-top: 4px; }
+.detail-grid { display: grid; gap: 22px; margin-top: 18px; }
+@media (min-width: 760px) { .detail-grid { grid-template-columns: 270px minmax(0, 1fr); gap: 40px; } }
+.lab-s { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #4B4638; }
+.adjust .ctl { display: flex; align-items: center; gap: 10px; }
+.adjust .val { min-width: 96px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 2.1rem; font-variant-numeric: tabular-nums; }
+.adjust .btn {
+  width: 46px; height: 46px; display: grid; place-items: center; cursor: pointer;
+  background: var(--ink); color: var(--ivory); border: 0; border-radius: 50%;
+  transition: transform .2s var(--ease-out);
+}
+.adjust .btn:active { transform: scale(.92); }
+.adjust .btn svg { width: 20px; height: 20px; }
+.adjust .help { margin: 8px 0 0; font-size: 13px; color: #4B4638; }
+.tx { list-style: none; margin: 0; padding: 0; }
+.tx li { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; padding: 9px 0; border-top: 1px solid rgba(21,19,28,.16); font-size: 15px; }
+.tx li:first-child { border-top: 0; padding-top: 0; }
+.tx .d { font-family: var(--font-display); font-weight: 700; color: #4B4638; }
+.tx .a { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.foot { margin: 52px 0 0; font-size: 13px; color: var(--ink-soft); max-width: 70ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: A budget you move with your thumb. Every category is a wire of ten beads; spending slides them across, so "are we OK?" reads as how far the beads have travelled, row by row. Refuses KPI tiles, donut-plus-bars, and the dark instrument panel's thin data ink.
+OWN-WORLD: Lemon-yellow ground, one black lacquer board with brass wires and glossy round beads in green / amber / red (ivory for budget still unspent), ivory detail panels. Bricolage Grotesque for headings and figures, Hanken Grotesk for reading.
+STORY: We glance, read one sentence, scan the board for beads that ran off the wire, tap that row, and nudge its budget.
+FIRST VIEWPORT: Verdict sentence at poster scale, top-left; "Coming up" list on the right; the board starts directly below with the whole-month wire first.
+FORM: Russian-schoty style bead wires, from the re-rolled concept roll (seed 041519d8, round 1, grounded candidate 7).
+FINISH: Sample only. No DESIGN.md written, so the repo's incumbent dashboard identity stays untouched.
+-->
+<div class="app pre" id="app">
+  <header class="top">
+    <span class="brand">Household</span>
+    <div class="month" role="group" aria-label="Choose month">
+      <button class="step" id="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></button>
+      <span class="label" id="monthLabel"></span>
+      <button class="step" id="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></button>
+    </div>
+    <p class="sample">Sample layout with synthetic numbers.</p>
+  </header>
+
+  <section class="lead" aria-label="This month at a glance">
+    <div>
+      <h1 id="headline"></h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <aside class="upcoming" id="upcoming" aria-label="Coming up"></aside>
+  </section>
+
+  <ul class="hint" aria-label="How to read the board">
+    <li><span class="dot" style="background:var(--idle-b)"></span>Budget still unspent</li>
+    <li><span class="dot" style="background:var(--ok-b)"></span>Spent, under 85%</li>
+    <li><span class="dot" style="background:var(--warn-b)"></span>Spent, 85–100%</li>
+    <li><span class="dot" style="background:var(--over-b)"></span>Over: beads fall off the wire</li>
+  </ul>
+  <p class="board-note" style="margin-top:0">Each bead is 10% of a category's budget. Spending slides beads to the right.</p>
+
+  <main class="board" id="board" aria-label="Category bead wires"></main>
+
+  <section id="lower" aria-labelledby="lowerTitle"></section>
+
+  <p class="foot">Credit Cards keeps its own wire but stays out of the monthly totals, because a card payment is money already counted under the category it was spent in. Budgets you change here only live in this preview.</p>
+</div>
+
+<script>
+(() => {
+  /* ---------- synthetic data (replace with the Google Sheet reads) ---------- */
+  const CATS = [
+    { id: 'housing',   e: '🏠', n: 'Housing',       b: 2200, s: 2200.00 },
+    { id: 'groc',      e: '🛒', n: 'Groceries',     b: 900,  s: 842.35 },
+    { id: 'dining',    e: '🍽️', n: 'Dining Out',    b: 350,  s: 412.80 },
+    { id: 'transport', e: '🚗', n: 'Transport',     b: 400,  s: 318.10 },
+    { id: 'util',      e: '💡', n: 'Utilities',     b: 380,  s: 361.44 },
+    { id: 'ent',       e: '🎬', n: 'Entertainment', b: 150,  s: 64.00 },
+    { id: 'cloth',     e: '👗', n: 'Clothing',      b: 200,  s: 231.50 },
+    { id: 'health',    e: '💊', n: 'Health',        b: 250,  s: 118.20 },
+    { id: 'edu',       e: '📚', n: 'Education',     b: 300,  s: 300.00 },
+    { id: 'travel',    e: '✈️', n: 'Travel',        b: 300,  s: 0 },
+    { id: 'tech',      e: '💻', n: 'Tech',          b: 200,  s: 89.99 },
+    { id: 'gifts',     e: '🎁', n: 'Gifts',         b: 150,  s: 140.00 },
+    { id: 'other',     e: '📦', n: 'Other',         b: 120,  s: 47.30 },
+  ];
+  const CARDS = { id: 'cards', e: '💳', n: 'Credit Cards', b: 1500, s: 1320.00, excluded: true };
+  const DEBTS = [
+    { id: 'car',     n: 'Car loan',     total: 18000, paid: 11400, monthly: 450 },
+    { id: 'student', n: 'Student loan', total: 21500, paid: 7200,  monthly: 380 },
+  ];
+  const INCOME = 6400;
+  const TX = {
+    housing:   [[1, 'Rent', 2200]],
+    groc:      [[26, 'Whole Foods', 96.42], [24, 'Costco', 188.17], [21, 'Corner market', 34.80]],
+    dining:    [[27, 'Thai Orchid', 64.20], [25, 'Coffee, two flat whites', 11.40], [23, 'Pizza night', 47.10]],
+    transport: [[27, 'Gas station', 52.30], [22, 'Metro card top-up', 40.00], [18, 'Parking', 14.00]],
+    util:      [[3, 'Electric', 142.00], [3, 'Water and sewer', 71.44], [1, 'Internet', 79.99]],
+    ent:       [[19, 'Cinema', 32.00], [1, 'Streaming', 15.49]],
+    cloth:     [[20, 'Kids winter coat', 118.50], [9, 'Running shoes', 113.00]],
+    health:    [[15, 'Pharmacy', 38.20], [8, 'Dentist co-pay', 80.00]],
+    edu:       [[2, 'Piano lessons', 300.00]],
+    travel:    [],
+    tech:      [[11, 'Phone case and cable', 29.99], [4, 'Cloud storage', 60.00]],
+    gifts:     [[17, 'Birthday present', 85.00], [12, 'Card and wrapping', 55.00]],
+    other:     [[22, 'Hardware store', 31.30], [6, 'Postage', 16.00]],
+    cards:     [[20, 'Card payment', 700.00], [5, 'Card payment', 620.00]],
+  };
+  const UPCOMING = [
+    { day: 1, n: 'Streaming', a: 15.49 },
+    { day: 2, n: 'Electric', a: 142.00 },
+    { day: 3, n: 'Internet', a: 79.99 },
+    { day: 5, n: 'Car insurance', a: 188.00 },
+  ];
+  const SEP_FACTOR = { housing: 1, groc: .97, dining: .92, transport: 1.05, util: .88, ent: .8, cloth: .5, health: .6, edu: 1, travel: 1.3, tech: .3, gifts: 1.1, other: .9, cards: .98 };
+  const MONTHS = [
+    { label: 'September 2026', y: 2026, m: 8, days: 30, day: 30, closed: true },
+    { label: 'October 2026',   y: 2026, m: 9, days: 31, day: 28, closed: false },
+  ];
+
+  /* ---------- helpers ---------- */
+  const r2 = n => Math.round(n * 100) / 100;
+  const money = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const money0 = n => '$' + Math.round(n).toLocaleString('en-US');
+  const list = a => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const statusOf = r => r > 1 ? 'over' : r > .85 ? 'warn' : r > 0 ? 'ok' : 'none';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const $ = id => document.getElementById(id);
+  const state = { mi: 1, open: null, overrides: {} };
+
+  function rowsFor(mi) {
+    const mk = c => {
+      const f = mi === 0 ? SEP_FACTOR[c.id] : 1;
+      const b = state.overrides[mi + ':' + c.id] ?? c.b;
+      return { ...c, b, s: r2(c.s * f), tx: (TX[c.id] || []).map(([d, n, a]) => [d, n, r2(a * f)]) };
+    };
+    return { cats: CATS.map(mk), cards: mk(CARDS) };
+  }
+
+  /* ---------- beads ---------- */
+  function beadsHTML(ratio, st, idx) {
+    let h = '';
+    for (let k = 9; k >= 0; k--) {
+      const p = Math.min(Math.max(ratio * 10 - k, 0), 1);
+      h += `<i class="bead${p > 0 ? ' ' + st : ''}" style="--k:${k};--p:${p.toFixed(3)};--row:${idx}"></i>`;
+    }
+    if (ratio > 1) {
+      const n = Math.min(6, Math.ceil((ratio - 1) * 10));
+      for (let i = 0; i < n; i++) {
+        const rot = ((i * 53) % 90) - 40, dy = (i % 2) * -7;
+        h += `<i class="spill" style="--i:${i};--rot:${rot}deg;--dy:${dy}px"></i>`;
+      }
+    }
+    return h;
+  }
+
+  function rowHTML(it, idx, ctx) {
+    const isDebt = it.kind === 'debt';
+    const ratio = isDebt ? it.paid / it.total : it.s / it.b;
+    const st = isDebt ? 'debt' : statusOf(ratio);
+    let pill, fig, aria;
+    if (isDebt) {
+      pill = `${money0(it.total - it.paid)} to go`;
+      fig = `${money0(it.paid)}<small> of ${money0(it.total)}</small>`;
+      aria = `${it.n}: ${money(it.paid)} paid of ${money(it.total)}, ${money(it.total - it.paid)} to go`;
+    } else {
+      const left = r2(it.b - it.s);
+      pill = st === 'over' ? `${money(it.s - it.b)} over` : st === 'none' ? 'Untouched' : left < .005 ? 'Fully used' : `${money(left)} left`;
+      fig = `${money0(it.s)}<small> of ${money0(it.b)}</small>`;
+      aria = `${it.n}: ${money(it.s)} of ${money(it.b)}, ${pill.toLowerCase()}`;
+    }
+    const open = state.open === it.id;
+    const label = it.e ? `<span class="emoji" aria-hidden="true">${it.e}</span>${esc(it.n)}` : esc(it.n);
+    return `<div class="row${ratio > 1 && !isDebt ? ' has-spill' : ''}">
+      <button class="row-btn" data-id="${it.id}" aria-expanded="${open}" aria-label="${esc(aria)}">
+        <span class="lab">${label}</span>
+        <span class="wire"><span class="beads">${beadsHTML(ratio, st, idx)}</span></span>
+        <span class="fig"><b>${fig}</b><span class="pill ${st}">${pill}</span></span>
+      </button>
+      ${open ? detailHTML(it, ctx) : ''}
+    </div>`;
+  }
+
+  /* ---------- detail ---------- */
+  function detailHTML(it, ctx) {
+    const close = `<button class="close" data-act="close" aria-label="Close details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    if (it.kind === 'debt') {
+      const rem = it.total - it.paid, months = Math.ceil(rem / it.monthly);
+      return `<section class="detail" id="detail" aria-live="polite">
+        <div class="detail-head"><h2>${esc(it.n)}</h2>${close}</div>
+        <p class="line"><b>${money(it.paid)}</b> paid of ${money(it.total)}. ${money(rem)} to go.</p>
+        <p class="line soft">At ${money(it.monthly)} a month, that is about ${months} more months.</p>
+      </section>`;
+    }
+    const left = r2(it.b - it.s);
+    let l1 = `<b>${money(it.s)}</b> spent of ${money(it.b)}. `;
+    l1 += it.s > it.b ? `<b>${money(it.s - it.b)}</b> over.` : it.s === 0 ? 'Nothing logged yet.' : left < .005 ? 'Fully used.' : `${money(left)} left.`;
+    let l2 = '';
+    if (!ctx.month.closed && !it.excluded) {
+      const expect = it.b * ctx.pace;
+      l2 = `<p class="line soft">By day ${ctx.month.day} of ${ctx.month.days}, an even pace would be about ${money0(expect)}. We are ${it.s > expect ? 'ahead of' : 'under'} that.</p>`;
+    }
+    const tx = [...it.tx].sort((a, b) => b[0] - a[0]);
+    const mon = ctx.month.label.split(' ')[0].slice(0, 3);
+    const txHTML = tx.length
+      ? `<span class="lab-s">Latest entries</span><ul class="tx">${tx.map(([d, n, a]) => `<li><span class="d">${mon} ${d}</span><span>${esc(n)}</span><span class="a">${money(a)}</span></li>`).join('')}</ul>`
+      : `<span class="lab-s">Latest entries</span><p class="line soft" style="margin-top:0">Nothing logged in ${ctx.month.label.split(' ')[0]} yet.</p>`;
+    return `<section class="detail" id="detail" aria-live="polite">
+      <div class="detail-head"><h2>${it.e} ${esc(it.n)}</h2>${close}</div>
+      <p class="line">${l1}</p>${l2}
+      <div class="detail-grid">
+        <div class="adjust">
+          <span class="lab-s" id="budgetLab">Monthly budget</span>
+          <div class="ctl" role="group" aria-labelledby="budgetLab">
+            <button class="btn" data-act="dec" aria-label="Lower budget by $25"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+            <span class="val" aria-live="polite">${money0(it.b)}</span>
+            <button class="btn" data-act="inc" aria-label="Raise budget by $25"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+          </div>
+          <p class="help">Changes in steps of $25.</p>
+        </div>
+        <div>${txHTML}</div>
+      </div>
+    </section>`;
+  }
+
+  /* ---------- whole page ---------- */
+  function render(animate) {
+    const month = MONTHS[state.mi];
+    const ctx = { month, pace: month.closed ? 1 : month.day / month.days };
+    const { cats, cards } = rowsFor(state.mi);
+    $('monthLabel').textContent = month.label;
+    $('prev').disabled = state.mi === 0;
+    $('next').disabled = state.mi === MONTHS.length - 1;
+
+    const spent = r2(cats.reduce((t, c) => t + c.s, 0));
+    const budget = cats.reduce((t, c) => t + c.b, 0);
+    const net = r2(INCOME - spent);
+    const overs = cats.filter(c => c.s > c.b).map(c => c.n);
+    const closeOnes = cats.filter(c => c.s <= c.b && c.s / c.b > .85).map(c => c.n);
+    const ratio = spent / budget;
+    const mName = month.label.split(' ')[0];
+
+    let head;
+    if (month.closed) head = net < 0 || ratio > 1 ? `${mName} closed over budget.` : `${mName} closed in the green.`;
+    else if (net < 0) head = 'We are spending more than we earn.';
+    else if (overs.length >= 3) head = 'Several rows ran off the wire.';
+    else if (ratio <= ctx.pace + .02) head = 'We’re OK this month.';
+    else head = 'Running a little hot.';
+    $('headline').textContent = head;
+
+    const left = r2(budget - spent);
+    let sub = `<strong>${money(left)}</strong> of the ${money0(budget)} budget ${month.closed ? 'was left over' : 'is still unspent'}${month.closed ? '' : `, with ${month.days - month.day} days to go`}. We have kept <strong>${net >= 0 ? money(net) : '−' + money(-net)}</strong> of the ${money0(INCOME)} we earned.`;
+    if (overs.length) sub += ` ${list(overs)} ${overs.length > 1 ? 'are' : 'is'} over.`;
+    if (closeOnes.length) sub += ` ${list(closeOnes)} ${closeOnes.length > 1 ? 'are' : 'is'} close.`;
+    $('sub').innerHTML = sub;
+
+    const nm = (month.m + 1) % 12, ny = month.y + (month.m + 1 > 11 ? 1 : 0);
+    const up = UPCOMING.map(u => ({ ...u, wd: new Date(ny, nm, u.day).toLocaleDateString('en-US', { weekday: 'short' }) }));
+    const upTotal = up.reduce((t, u) => t + u.a, 0);
+    $('upcoming').innerHTML = `<h2>Coming up</h2><ul>${up.map(u => `<li><span class="d">${u.wd} ${u.day}</span><span>${esc(u.n)}</span><span class="a">${money(u.a)}</span></li>`).join('')}</ul><p class="total">${money(upTotal)} due early ${new Date(ny, nm, 1).toLocaleDateString('en-US', { month: 'long' })}</p>`;
+
+    /* the whole-month wire leads the board */
+    const mst = statusOf(ratio);
+    const mLeft = r2(budget - spent);
+    const masterPill = mst === 'over' ? `${money(spent - budget)} over` : `${money(mLeft)} left`;
+    const master = `<div class="row"><div class="row-static">
+      <span class="lab master">All spending</span>
+      <span class="wire master"><span class="beads">${beadsHTML(ratio, mst, 0)}</span></span>
+      <span class="fig"><b>${money0(spent)}<small> of ${money0(budget)}</small></b><span class="pill ${mst}">${masterPill}</span></span>
+    </div></div>`;
+    $('board').innerHTML = master + cats.map((c, i) => rowHTML(c, i + 1, ctx)).join('');
+
+    const lowerItems = [cards, ...DEBTS.map(d => ({ ...d, kind: 'debt' }))];
+    $('lower').innerHTML = `<h2 class="board-title" id="lowerTitle">Card bills and loans</h2><p class="board-note">Kept apart from the monthly totals above.</p><div class="board">${lowerItems.map((it, i) => rowHTML(it, i, ctx)).join('')}</div>`;
+
+    const app = $('app');
+    if (animate) {
+      app.classList.add('pre');
+      requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('pre')));
+    } else {
+      app.classList.remove('pre');
+    }
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', e => {
+    const rowBtn = e.target.closest('.row-btn');
+    const actEl = e.target.closest('[data-act]');
+    let restore = null;
+    if (actEl) {
+      const act = actEl.dataset.act;
+      if (act === 'close') { const id = state.open; state.open = null; restore = `.row-btn[data-id="${id}"]`; render(false); }
+      else if (act === 'inc' || act === 'dec') {
+        const key = state.mi + ':' + state.open;
+        const cur = rowsFor(state.mi);
+        const it = state.open === 'cards' ? cur.cards : cur.cats.find(c => c.id === state.open);
+        state.overrides[key] = Math.max(25, it.b + (act === 'inc' ? 25 : -25));
+        restore = `[data-act="${act}"]`;
+        render(false);
+      }
+    } else if (rowBtn) {
+      const id = rowBtn.dataset.id;
+      state.open = state.open === id ? null : id;
+      restore = `.row-btn[data-id="${id}"]`;
+      render(false);
+    }
+    if (restore) document.querySelector(restore)?.focus({ preventScroll: true });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && state.open) { const id = state.open; state.open = null; render(false); document.querySelector(`.row-btn[data-id="${id}"]`)?.focus(); }
+  });
+  $('prev').addEventListener('click', () => { if (state.mi > 0) { state.mi--; state.open = null; render(true); } });
+  $('next').addEventListener('click', () => { if (state.mi < MONTHS.length - 1) { state.mi++; state.open = null; render(true); } });
+
+  render(true);
+})();
+</script>
+</body>
+</html>
