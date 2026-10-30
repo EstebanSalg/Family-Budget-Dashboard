@@ -46,7 +46,7 @@ export function MonthSelector({ currentMonth }: { currentMonth: string }) {
           </option>
         ))}
       </select>
-      {error && <span className="text-[#EE8478]">{error}</span>}
+      {error && <span className="text-[#F43F5E]">{error}</span>}
     </div>
   );
 }

@@ -16,8 +16,16 @@ export default async function OverviewPage() {
   const expenseRows = budgets.filter((b) => b.category !== '💰 Income');
   const incomeRow = budgets.find((b) => b.category === '💰 Income');
 
-  const totalSpent = expenseRows.reduce((sum, b) => sum + b.spent, 0);
-  const totalBudget = expenseRows.reduce((sum, b) => sum + b.budget, 0);
+  // Credit Cards keeps its own budget/spent row everywhere (Budget vs. Spent,
+  // Categories, Over Budget) so it's still trackable on its own -- but it's
+  // excluded from the household's overall totals here, since a card bill
+  // payment is money already counted once as an itemized purchase (Amex,
+  // etc.) under its real category. Including it too would double-count
+  // whatever was charged to the card.
+  const trackedSpendRows = expenseRows.filter((b) => b.category !== '💳 Credit Cards');
+
+  const totalSpent = trackedSpendRows.reduce((sum, b) => sum + b.spent, 0);
+  const totalBudget = trackedSpendRows.reduce((sum, b) => sum + b.budget, 0);
   const income = incomeRow?.spent ?? 0;
   const netSavings = income - totalSpent;
   const overBudgetRows = expenseRows.filter((b) => b.spent > b.budget);
@@ -52,12 +60,12 @@ export default async function OverviewPage() {
             <h2 className="font-mono text-[12.5px] uppercase tracking-[0.08em] text-panel-inkMuted">Where It Went</h2>
             <span className="font-mono text-xs text-panel-inkMuted">${totalSpent.toFixed(2)}</span>
           </div>
-          <CategoryDonut data={expenseRows.map((b) => ({ category: b.category, spent: b.spent }))} />
+          <CategoryDonut data={trackedSpendRows.map((b) => ({ category: b.category, spent: b.spent }))} />
         </div>
         <div className="rounded-lg border border-panel-line bg-panel-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.4),0_14px_30px_-16px_rgba(0,0,0,.65)]">
           <div className="mb-2 flex items-baseline justify-between">
             <h2 className="font-mono text-[12.5px] uppercase tracking-[0.08em] text-panel-inkMuted">Budget vs. Spent</h2>
-            <span className="font-mono text-xs text-panel-inkMuted">brass tick = budget line</span>
+            <span className="font-mono text-xs text-panel-inkMuted">accent tick = budget line</span>
           </div>
           <BudgetVsSpentChart
             data={expenseRows.map((b) => ({ category: b.category, budget: b.budget, spent: b.spent, status: b.status }))}

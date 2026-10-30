@@ -19,22 +19,22 @@ export function ConfirmationQueue({ pending }: { pending: Transaction[] }) {
     router.refresh();
   }
 
-  if (pending.length === 0) return <p className="text-slate-400">Nothing pending confirmation.</p>;
+  if (pending.length === 0) return <p className="text-panel-inkMuted">Nothing pending confirmation.</p>;
 
   return (
     <ul className="space-y-2">
       {pending.map((t) => {
         const key = t.date.toISOString().slice(0, 10) + t.description;
         return (
-          <li key={key} className="flex items-center gap-3 rounded bg-slate-900 p-3">
+          <li key={key} className="flex items-center gap-3 rounded border border-panel-line bg-panel-surface p-3">
             <span className="flex-1">{t.description}</span>
             <input
               type="number"
               defaultValue={t.amount}
               onChange={(e) => setAmounts((a) => ({ ...a, [key]: e.target.value }))}
-              className="w-28 rounded border border-slate-700 bg-slate-800 px-2 py-1"
+              className="w-28 rounded border border-panel-line bg-panel-surface2 px-2 py-1 font-mono text-panel-ink"
             />
-            <button onClick={() => confirm(t)} className="rounded bg-blue-600 px-3 py-1 text-sm">Confirm</button>
+            <button onClick={() => confirm(t)} className="rounded bg-accent px-3 py-1 text-sm text-panel-bg">Confirm</button>
           </li>
         );
       })}

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const inputClass = 'rounded border border-slate-700 bg-slate-800 px-2 py-1';
-const labelClass = 'flex flex-col gap-1 text-xs text-slate-400';
+const inputClass = 'rounded border border-panel-line bg-panel-surface2 px-2 py-1 text-panel-ink';
+const labelClass = 'flex flex-col gap-1 text-xs text-panel-inkMuted';
 
 export function AddDebtForm() {
   const [showForm, setShowForm] = useState(false);
@@ -44,7 +44,7 @@ export function AddDebtForm() {
     return (
       <button
         onClick={() => setShowForm(true)}
-        className="mb-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium"
+        className="mb-4 rounded bg-accent px-4 py-2 text-sm font-medium text-panel-bg"
       >
         + Add loan
       </button>
@@ -52,7 +52,7 @@ export function AddDebtForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 grid grid-cols-2 gap-3 rounded-lg bg-slate-900 p-4 md:grid-cols-4">
+    <form onSubmit={handleSubmit} className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-panel-line bg-panel-surface p-4 md:grid-cols-4">
       <label className={labelClass}>
         Loan name
         <input placeholder="e.g. Honda CRV 2023" value={form.name} onChange={(e) => update('name', e.target.value)} required className={inputClass} />
@@ -91,9 +91,9 @@ export function AddDebtForm() {
         <input placeholder="e.g. car loan" value={form.keyword} onChange={(e) => update('keyword', e.target.value)} className={inputClass} />
       </label>
       <div className="col-span-2 flex items-center gap-3 md:col-span-4">
-        <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-sm font-medium">Save loan</button>
-        <button type="button" onClick={() => setShowForm(false)} className="text-sm text-slate-400 hover:underline">Cancel</button>
-        {error && <span className="text-sm text-red-400">{error}</span>}
+        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm font-medium text-panel-bg">Save loan</button>
+        <button type="button" onClick={() => setShowForm(false)} className="text-sm text-panel-inkMuted hover:underline">Cancel</button>
+        {error && <span className="text-sm text-[#F43F5E]">{error}</span>}
       </div>
     </form>
   );

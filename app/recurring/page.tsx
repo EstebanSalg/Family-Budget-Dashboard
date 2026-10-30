@@ -30,26 +30,26 @@ export default async function RecurringPage() {
   const groups = groupByCategory(items);
 
   return (
-    <main className="min-h-screen space-y-6 bg-slate-950 p-6 text-slate-100">
+    <main className="min-h-screen space-y-6 bg-panel-bg p-6 text-panel-ink">
       <h1 className="text-2xl font-semibold">Recurring & Automation</h1>
       <section>
-        <h2 className="mb-2 text-sm uppercase text-slate-400">Needs Confirmation</h2>
+        <h2 className="mb-2 text-sm uppercase text-panel-inkMuted">Needs Confirmation</h2>
         <ConfirmationQueue pending={pending} />
       </section>
       <section>
-        <h2 className="mb-2 text-sm uppercase text-slate-400">Recurring Items</h2>
+        <h2 className="mb-2 text-sm uppercase text-panel-inkMuted">Recurring Items</h2>
         <RecurringForm categories={categories} />
         <div className="space-y-1">
           {groups.map(([category, categoryItems]) => (
-            <details key={category} className="rounded bg-slate-900 p-3 text-sm">
+            <details key={category} className="rounded border border-panel-line bg-panel-surface p-3 text-sm">
               <summary className="cursor-pointer font-medium">
-                {category} <span className="text-slate-500">({categoryItems.length})</span>
+                {category} <span className="text-panel-inkMuted">({categoryItems.length})</span>
               </summary>
-              <ul className="mt-2 space-y-1 border-t border-slate-800 pt-2">
+              <ul className="mt-2 space-y-1 border-t border-panel-line pt-2">
                 {categoryItems.map((item) => (
                   <li key={item.name} className="flex justify-between py-1">
                     <span>{item.name}</span>
-                    <span>${item.expectedAmount.toFixed(2)} / {item.frequency} — next {item.nextDueDate.toLocaleDateString()}</span>
+                    <span className="font-mono">${item.expectedAmount.toFixed(2)} / {item.frequency} — next {item.nextDueDate.toLocaleDateString()}</span>
                   </li>
                 ))}
               </ul>

@@ -18,7 +18,7 @@ function Gauge({ ratio, color }: { ratio: number; color: string }) {
 
   return (
     <svg width="52" height="52" viewBox="0 0 52 52" className="shrink-0">
-      <circle cx="26" cy="26" r={radius} fill="none" stroke="#171F29" strokeWidth="5" />
+      <circle cx="26" cy="26" r={radius} fill="none" stroke="#1C1F29" strokeWidth="5" />
       <circle
         cx="26"
         cy="26"
@@ -37,8 +37,8 @@ function Gauge({ ratio, color }: { ratio: number; color: string }) {
         textAnchor="middle"
         fontSize="11"
         fontWeight={700}
-        fill="#ECF1F4"
-        style={{ fontFamily: 'var(--font-plex-mono)' }}
+        fill="#DFE2EF"
+        style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
       >
         {Math.round(clamped * 100)}%
       </text>
@@ -106,7 +106,7 @@ export function OverviewTiles({
           ) : (
             <>
               <p className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-panel-inkMuted">{tile.label}</p>
-              <p className="mt-1.5 text-2xl font-extrabold" style={tile.color ? { color: tile.color } : { color: '#ECF1F4' }}>
+              <p className="mt-1.5 text-2xl font-extrabold" style={tile.color ? { color: tile.color } : { color: '#DFE2EF' }}>
                 {tile.value}
               </p>
               <p className="mt-1 truncate text-[11px] text-panel-inkMuted">{tile.sub}</p>

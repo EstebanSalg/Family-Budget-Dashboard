@@ -6,7 +6,7 @@ import { getStatusColor } from '@/lib/statusColor';
 type Row = { category: string; budget: number; spent: number; status: string };
 
 // Hand-rolled instead of a Recharts bar: each row needs its own percentage
-// scale (track = 100% of that category's own budget) plus a fixed brass tick
+// scale (track = 100% of that category's own budget) plus a fixed accent tick
 // marking the budget line and a hatched overflow past it when over -- a
 // shared-axis bar chart can't produce a per-row "redline" like this.
 export function BudgetVsSpentChart({ data }: { data: Row[] }) {
@@ -34,7 +34,7 @@ export function BudgetVsSpentChart({ data }: { data: Row[] }) {
               <span className="absolute inset-0 overflow-hidden rounded-[3px]">
                 <span
                   className="absolute inset-0 bg-panel-surface2"
-                  style={{ backgroundImage: 'repeating-linear-gradient(90deg, #22303F 0 1px, transparent 1px 12.5%)' }}
+                  style={{ backgroundImage: 'repeating-linear-gradient(90deg, #464554 0 1px, transparent 1px 12.5%)' }}
                 />
                 <span
                   className="absolute inset-y-0.5 left-0 rounded-[2px]"
@@ -46,12 +46,12 @@ export function BudgetVsSpentChart({ data }: { data: Row[] }) {
                     style={{
                       left: `${TRACK_SPLIT}%`,
                       width: `${overflowPct}%`,
-                      backgroundImage: 'repeating-linear-gradient(45deg, #EE8478 0 3px, transparent 3px 6px)',
+                      backgroundImage: 'repeating-linear-gradient(45deg, #F43F5E 0 3px, transparent 3px 6px)',
                     }}
                   />
                 )}
               </span>
-              <span className="absolute -inset-y-1 w-0.5 bg-brass" style={{ left: `${TRACK_SPLIT}%` }} />
+              <span className="absolute -inset-y-1 w-0.5 bg-accent" style={{ left: `${TRACK_SPLIT}%` }} />
             </span>
 
             <span className="text-right font-mono text-[11px] text-panel-inkMuted">

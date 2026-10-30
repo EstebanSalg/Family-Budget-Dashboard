@@ -9,10 +9,10 @@
 // underlying ratio.
 
 export const STATUS_COLORS = {
-  red: '#f87171',
-  amber: '#fbbf24',
-  green: '#4ade80',
-  neutral: '#64748b',
+  red: '#F43F5E',
+  amber: '#F59E0B',
+  green: '#10B981',
+  neutral: '#908FA0',
 } as const;
 
 export function getStatusColor(status: string): string {

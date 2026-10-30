@@ -50,7 +50,7 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <Link
           href={`/categories/${encodeURIComponent(row.category)}`}
-          className="flex items-center gap-2 font-semibold text-panel-ink transition-colors hover:text-brass"
+          className="flex items-center gap-2 font-semibold text-panel-ink transition-colors hover:text-accent"
         >
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: statusColor }} />
           {row.category}
@@ -69,7 +69,7 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="w-24 text-right text-panel-inkMuted underline decoration-dotted decoration-panel-line underline-offset-2 hover:text-brass"
+              className="w-24 text-right text-panel-inkMuted underline decoration-dotted decoration-panel-line underline-offset-2 hover:text-accent"
             >
               ${budget.toFixed(2)}
             </button>
@@ -82,14 +82,14 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
             {statusLabel}
           </span>
           <MiniSparkline data={trend} color={statusColor} />
-          {error && <span className="text-[#EE8478]">{error}</span>}
+          {error && <span className="text-[#F43F5E]">{error}</span>}
         </div>
       </div>
       <div className="relative mt-2.5 h-1.5 w-full">
         <div className="absolute inset-0 overflow-hidden rounded-full">
           <div
             className="absolute inset-0 bg-panel-surface2"
-            style={{ backgroundImage: 'repeating-linear-gradient(90deg, #22303F 0 1px, transparent 1px 12.5%)' }}
+            style={{ backgroundImage: 'repeating-linear-gradient(90deg, #464554 0 1px, transparent 1px 12.5%)' }}
           />
           <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${fillPct}%`, backgroundColor: statusColor }} />
           {overflowPct > 0 && (
@@ -98,12 +98,12 @@ export function CategoryRow({ row, trend }: { row: CategoryBudget; trend: Trend 
               style={{
                 left: `${TRACK_SPLIT}%`,
                 width: `${overflowPct}%`,
-                backgroundImage: 'repeating-linear-gradient(45deg, #EE8478 0 3px, transparent 3px 6px)',
+                backgroundImage: 'repeating-linear-gradient(45deg, #F43F5E 0 3px, transparent 3px 6px)',
               }}
             />
           )}
         </div>
-        <div className="absolute -inset-y-1 w-0.5 bg-brass" style={{ left: `${TRACK_SPLIT}%` }} />
+        <div className="absolute -inset-y-1 w-0.5 bg-accent" style={{ left: `${TRACK_SPLIT}%` }} />
       </div>
     </div>
   );

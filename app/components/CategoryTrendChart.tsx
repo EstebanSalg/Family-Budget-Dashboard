@@ -9,7 +9,7 @@ export function CategoryTrendChart({ data }: { data: { month: string; total: num
         <XAxis dataKey="month" />
         <YAxis />
         <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-        <Line type="monotone" dataKey="total" stroke="#38bdf8" strokeWidth={2} dot />
+        <Line type="monotone" dataKey="total" stroke="#6366F1" strokeWidth={2} dot />
       </LineChart>
     </ResponsiveContainer>
   );

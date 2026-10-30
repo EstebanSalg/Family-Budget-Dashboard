@@ -12,11 +12,11 @@ export default async function DebtTrackerPage() {
   const [debts, transactions] = await Promise.all([getDebts(), getTransactions()]);
 
   return (
-    <main className="min-h-screen space-y-4 bg-slate-950 p-6 text-slate-100">
+    <main className="min-h-screen space-y-4 bg-panel-bg p-6 text-panel-ink">
       <h1 className="text-2xl font-semibold">Debt Tracker</h1>
       <AddDebtForm />
       {debts.length === 0 ? (
-        <p className="text-slate-400">No loans configured yet.</p>
+        <p className="text-panel-inkMuted">No loans configured yet.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {debts.map((debt) => (

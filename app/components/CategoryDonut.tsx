@@ -2,10 +2,10 @@
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Muted, cohesive palette (enamel-dial swatches) instead of a bright
-// chart-library rainbow -- deliberately picked to hold up on both a near-
-// black and a light background.
-const PALETTE = ['#B4900F', '#3F8F86', '#B06A4A', '#5C7A96', '#7C8C4A', '#A0637A', '#8C6D9C', '#4F7A5E'];
+// Drawn from the Antigravity Finance design system's accent set (indigo,
+// emerald, amber, cyan, rose, purple) plus two lighter tints to round out
+// eight categories, instead of a bright chart-library rainbow.
+const PALETTE = ['#6366F1', '#10B981', '#F59E0B', '#06B6D4', '#F43F5E', '#A855F7', '#818CF8', '#34D399'];
 
 export function CategoryDonut({ data }: { data: { category: string; spent: number }[] }) {
   const nonZero = data.filter((d) => d.spent > 0);
@@ -32,14 +32,14 @@ export function CategoryDonut({ data }: { data: { category: string; spent: numbe
             <Tooltip
               formatter={(value) => `$${Number(value).toFixed(2)}`}
               contentStyle={{
-                background: '#171F29',
-                border: '1px solid #22303F',
+                background: '#181B25',
+                border: '1px solid #464554',
                 borderRadius: 6,
-                fontFamily: 'var(--font-plex-mono)',
+                fontFamily: 'var(--font-jetbrains-mono)',
                 fontSize: 12,
               }}
-              itemStyle={{ color: '#ECF1F4' }}
-              labelStyle={{ color: '#8C99A6' }}
+              itemStyle={{ color: '#DFE2EF' }}
+              labelStyle={{ color: '#C7C4D7' }}
             />
           </PieChart>
         </ResponsiveContainer>

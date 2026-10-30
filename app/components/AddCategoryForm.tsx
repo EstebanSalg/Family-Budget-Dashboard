@@ -60,11 +60,11 @@ export function AddCategoryForm() {
       </div>
       <button
         type="submit"
-        className="rounded bg-brass px-4 py-1.5 font-mono text-[13px] font-semibold text-panel-bg transition-opacity hover:opacity-90"
+        className="rounded bg-accent px-4 py-1.5 font-mono text-[13px] font-semibold text-panel-bg transition-opacity hover:opacity-90"
       >
         + Add category
       </button>
-      {error && <span className="font-mono text-sm text-[#EE8478]">{error}</span>}
+      {error && <span className="font-mono text-sm text-[#F43F5E]">{error}</span>}
     </form>
   );
 }

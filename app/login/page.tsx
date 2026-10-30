@@ -25,18 +25,18 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-lg bg-slate-900 p-8">
+    <main className="flex min-h-screen items-center justify-center bg-panel-bg text-panel-ink">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-lg border border-panel-line bg-panel-surface p-8">
         <h1 className="text-xl font-semibold">Family Budget Dashboard</h1>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Household password"
-          className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2"
+          className="w-full rounded border border-panel-line bg-panel-surface2 px-3 py-2 text-panel-ink"
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button type="submit" className="w-full rounded bg-blue-600 py-2 font-medium">
+        {error && <p className="text-sm text-[#F43F5E]">{error}</p>}
+        <button type="submit" className="w-full rounded bg-accent py-2 font-medium text-panel-bg">
           Sign in
         </button>
       </form>
